@@ -105,10 +105,8 @@ class PlayerButton (Button):
       if ( self.is_pressed ):
          # update score
          game.score(self.name, self.home)
-         print("Score:",game.home_score,"-",game.away_score)
          # check conditions
          for condition in self.conditions:
-            print(condition)
             if ( condition.check(game) ):
                self.song = condition.song
                print("Playing",condition.songname)
@@ -223,7 +221,6 @@ def clearGameState (is_pressed):
    game.clear()
 
 def main ():
-   print(pyglet.resource.path)
    initHomeButtons()
    initAwayButtons()
    Manager(OneTimeButton('Reset Game State',on_release=clearGameState),window=window, batch=batch,theme=tsyst,offset=(0,-200))
