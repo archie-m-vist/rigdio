@@ -12,7 +12,9 @@ class Condition:
 class GoalCondition (Condition):
    def __init__(self, pname, tokens):
       Condition.__init__(self,pname)
-      operators = ["<", ">", "<=", ">=", "="]
+      operators = ["<", ">", "<=", ">=", "=="]
+      if tokens[1] == "=":
+         tokens[1] = "=="
       if tokens[1] not in operators:
          raise Exception("invalid GoalCondition operator "+tokens[1]+"; valid operators are "+operators)
       self.comparison = tokens[1]+" "+tokens[2]
