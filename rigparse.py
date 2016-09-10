@@ -10,6 +10,7 @@ def loadsong(filename):
       raise Exception(filename+" not found.")
    song = pyglet.media.load(filename)
    source = song.play()
+   source.eos_action = source.EOS_LOOP
    source.pause()
    return source
 
