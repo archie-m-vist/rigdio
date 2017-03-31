@@ -1,16 +1,18 @@
 import os
 import pyglet
+
 from os.path import abspath, isfile
 from condition import ConditionList
 
-def loadsong(filename):
+def loadsong(filename, vanthem = False):
    print("Attempting to load "+filename)
    filename = abspath(filename)
    if not ( isfile(filename) ):
       raise Exception(filename+" not found.")
    song = pyglet.media.load(filename)
    source = song.play()
-   source.eos_action = source.EOS_LOOP
+   if not vanthem:
+      source.eos_action = source.EOS_LOOP
    source.pause()
    return source
 
@@ -34,7 +36,7 @@ def parse (filename):
       if player not in output:
          output[player] = []
       filename = folder+data[1] # location of song, relative to location of export file
-      clist = ConditionList(data[0], loadsong(filename), filename, data[2:])
+      clist = ConditionList(data[0], loadsong(filename,player=='victory'), filename, data[2:])
       output[player].append(clist)
    # copy default goalhorn onto the end of all player goalhorns
    reserved = ['anthem', 'victory', 'goal'] # reserved names
