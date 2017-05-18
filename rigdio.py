@@ -14,6 +14,7 @@ from gamestate import GameState
 
 import sys
 sys.stdout = open('rigdio.log', 'w')
+sys.stderr = sys.stdout
 
 window = pyglet.window.Window(640, 480, resizable=True, vsync=True)
 batch = pyglet.graphics.Batch()
@@ -111,7 +112,7 @@ class PlayerButton (Button):
          # check conditions
          for condition in self.conditions:
             if ( condition.check(game) ):
-               self.song = condition.song
+               self.song = condition
                print("Playing",condition.songname)
                self.song.play()
                break
@@ -120,7 +121,6 @@ class PlayerButton (Button):
          if ( self.song is not None ):
             self.song.pause()
             self.song = None
-
 
 def open_home_file(is_pressed):
    f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
@@ -227,7 +227,10 @@ def main ():
    initHomeButtons()
    initAwayButtons()
    Manager(OneTimeButton('Reset Game State',on_release=clearGameState),window=window, batch=batch,theme=tsyst,offset=(0,-200))
-   pyglet.app.run()
+   try:
+      pyglet.app.run()
+   except:
+      close(sys.stdout)
 
 if __name__ == '__main__':
    main()

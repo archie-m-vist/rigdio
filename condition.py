@@ -1,3 +1,5 @@
+from rigdio_util import timeToSeconds
+
 class Condition:
    def __init__(self, pname):
       self.pname = pname
@@ -7,6 +9,12 @@ class Condition:
    __repr__ = __str__
 
    def check(self, gamestate):
+      """
+         Checks if a condition is true or not.
+         
+         Arguments:
+          - gamestate (GameState):
+      """
       return True
 
 class GoalCondition (Condition):
@@ -42,23 +50,36 @@ def NotCondition (Condition):
       return not self.condition.check(gamestate)
 
 class ConditionList (Condition):
-   def buildCondition(pname, tokens):
+   def buildCondition(self, pname, tokens, song):
       if ( tokens[0].lower() == "goals" ):
          return GoalCondition(pname,tokens)
       elif ( tokens[0].lower() == "not" ):
          return NotCondition(pname,buildCondition(tokens[1:]))
+      elif ( tokens[0].lower() == "start" ):
+         self.startTime = 1000*int(timeToSeconds(tokens[1]))
 
    def __init__(self, pname, song, songname, data):
       self.conditions = []
       self.song = song
       self.songname = songname
+      self.startTime = 0
       for token in data:
          tokens = token.split()
-         condition = ConditionList.buildCondition(pname, tokens)
-         self.conditions.append(condition)
+         condition = self.buildCondition(pname, tokens, self.song)
+         if condition is not None:
+            self.conditions.append(condition)
    
    def __str__(self):
       return str(self.conditions)+": "+self.songname
+
+   def play (self):
+      self.song.play()
+      if self.startTime is not 0:
+         self.song.set_time(self.startTime)
+         self.startTime = 0
+
+   def pause (self):
+      self.song.pause()
 
    def check (self, gamestate):
       for condition in self.conditions:
