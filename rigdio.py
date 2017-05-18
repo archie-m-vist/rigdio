@@ -12,6 +12,9 @@ from pyglet_gui.containers import VerticalContainer
 from rigparse import parse
 from gamestate import GameState
 
+import sys
+sys.stdout = open('rigdio.log', 'w')
+
 window = pyglet.window.Window(640, 480, resizable=True, vsync=True)
 batch = pyglet.graphics.Batch()
 
