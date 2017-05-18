@@ -1,5 +1,6 @@
 import os
-import pyglet
+import vlc
+
 
 from os.path import abspath, isfile
 from condition import ConditionList
@@ -9,18 +10,18 @@ def loadsong(filename, vanthem = False):
    filename = abspath(filename)
    if not ( isfile(filename) ):
       raise Exception(filename+" not found.")
-   song = pyglet.media.load(filename)
-   source = song.play()
+   source = vlc.MediaPlayer("file:///"+filename)
    if not vanthem:
-      source.eos_action = source.EOS_LOOP
-   source.pause()
+      source.get_media().add_options("input-repeat=-1")
+   #source.play()
+   #print(source.can_pause())
+   #source.set_pause(1)
    return source
 
 """Parses a music export file and loads it into memory."""
 def parse (filename):
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
-   pyglet.resource.path.append(folder)
    output = {}
    # open filename
    with open(filename) as f:
@@ -46,13 +47,16 @@ def parse (filename):
    return output
 
 def main ():
-   mSongs = parse("./music/m/m.4ccm")
-   for player in mSongs:
-      print(player)
-      for condition in mSongs[player]:
-         print(" - "+str(condition))
-   mSongs['Alteisen Riese'][0].song.play()
-   pyglet.app.run()
+   file = parse("./music/4cc/m/m.4ccm")
+   file["Char's Zaku II"][0].song.play()
+   i = 0
+   time.sleep(15)
+   file["Char's Zaku II"][0].song.pause()
+   time.sleep(5)
+   file["Char's Zaku II"][0].song.play()
+   while True:
+      pass
 
 if __name__ == '__main__':
+   import time
    main()
