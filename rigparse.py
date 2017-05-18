@@ -13,9 +13,6 @@ def loadsong(filename, vanthem = False):
    source = vlc.MediaPlayer("file:///"+filename)
    if not vanthem:
       source.get_media().add_options("input-repeat=-1")
-   #source.play()
-   #print(source.can_pause())
-   #source.set_pause(1)
    return source
 
 """Parses a music export file and loads it into memory."""
