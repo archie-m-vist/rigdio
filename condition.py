@@ -1,4 +1,7 @@
 from rigdio_util import timeToSeconds
+from time import sleep
+
+fadeTime = 3
 
 class Condition:
    def __init__(self, pname):
@@ -58,11 +61,12 @@ class ConditionList (Condition):
       elif ( tokens[0].lower() == "start" ):
          self.startTime = 1000*int(timeToSeconds(tokens[1]))
 
-   def __init__(self, pname, song, songname, data):
+   def __init__(self, pname, song, songname, data, goalhorn = True):
       self.conditions = []
       self.song = song
       self.songname = songname
       self.startTime = 0
+      self.isGoalhorn = goalhorn
       for token in data:
          tokens = token.split()
          condition = self.buildCondition(pname, tokens, self.song)
@@ -79,7 +83,14 @@ class ConditionList (Condition):
          self.startTime = 0
 
    def pause (self):
+      if self.isGoalhorn:
+         i = 100
+         while i > 0:
+            self.song.audio_set_volume(i)
+            sleep(fadeTime/100)
+            i -= 1
       self.song.pause()
+      self.song.audio_set_volume(100)
 
    def check (self, gamestate):
       for condition in self.conditions:

@@ -135,11 +135,15 @@ def open_home_file(is_pressed):
       homeButtons.add(Label("Anthems"))
       temp = home.pop('anthem', None)
       if ( temp != None ):
+         for x in temp:
+            x.isGoalhorn = False
          homeButtons.add(PlayerButton('Anthem',temp,True))
       else:
          print("ERROR: no anthem specified in "+f+".")
       temp = home.pop('victory', None)
       if ( temp != None ):
+         for x in temp:
+            x.isGoalhorn = False
          homeButtons.add(PlayerButton('Victory Anthem',temp,True))
 
       homeButtons.add(Label("Goalhorns"))
