@@ -6,8 +6,9 @@ from rigdio_util import timeToSeconds
 fadeTime = 3
 
 class Condition:
-   def __init__(self, pname):
+   def __init__(self, pname, tname):
       self.pname = pname
+      self.tname = tname
 
    def __str__(self):
       return "Always True"
@@ -18,19 +19,19 @@ class Condition:
          Checks if a condition is true or not.
          
          Arguments:
-          - gamestate (GameState):
+          - gamestate (GameState): state of the game.
       """
       return True
 
 class GoalCondition (Condition):
-   def __init__(self, pname, tokens):
-      Condition.__init__(self,pname)
+   def __init__(self, pname, tname, tokens):
+      Condition.__init__(self,pname,tname)
       operators = ["<", ">", "<=", ">=", "=="]
-      if tokens[1] == "=":
-         tokens[1] = "=="
-      if tokens[1] not in operators:
-         raise Exception("invalid GoalCondition operator "+tokens[1]+"; valid operators are "+operators)
-      self.comparison = tokens[1]+" "+tokens[2]
+      if tokens[0] == "=":
+         tokens[0] = "=="
+      if tokens[0] not in operators:
+         raise Exception("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+operators)
+      self.comparison = tokens[0]+" "+tokens[1]
    
    def __str__(self):
       return "If Goals "+self.comparison
@@ -41,8 +42,8 @@ class GoalCondition (Condition):
       return eval(str(goals)+self.comparison)
 
 def NotCondition (Condition):
-   def __init__(self, pname, condition):
-      Condition.__init__(self,pname)
+   def __init__(self, pname, tname, condition):
+      Condition.__init__(self,pname,tname)
       self.condition = condition
 
    def __str__(self):
@@ -54,16 +55,47 @@ def NotCondition (Condition):
    def check(self, gamestate):
       return not self.condition.check(gamestate)
 
+class ComebackCondition (Condition):
+   def __init__(self, pname, tname):
+      Condition.__init__(self,pname,tname)
+      self.home = None
+
+   def check(self,gamestate):
+      if self.home == None:
+         self.home = (gamestate.home_name == self.tname)
+      if self.home:
+         return gamestate.home_score <= gamestate.away_score and gamestate.away_score > 0
+      else:
+         return gamestate.away_score <= gamestate.home_score and gamestate.home_score > 0
+
+class OpponentCondition (Condition):
+   def __init__(self,pname,tname,tokens):
+      Condition.__init__(self,pname,tname)
+      self.other = tokens[0].lower()
+      self.home = None
+
+   def check(self,gamestate):
+      if self.home == None:
+         self.home = (gamestate.home_name == self.tname)
+      if self.home:
+         return gamestate.away_name == self.other
+      else:
+         return gamestate.home_name == self.other
+
 class ConditionList (Condition):
-   def buildCondition(self, pname, tokens, song):
+   def buildCondition(self, pname, tname, tokens, song):
       if ( tokens[0].lower() == "goals" ):
-         return GoalCondition(pname,tokens)
+         return GoalCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "not" ):
-         return NotCondition(pname,buildCondition(tokens[1:]))
+         return NotCondition(pname,tname,buildCondition(tokens[1:]))
+      elif ( tokens[0].lower() == "comeback" ):
+         return ComebackCondition(pname,tname)
+      elif ( tokens[0].lower() == "opponent" ):
+         return OpponentCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "start" ):
          self.startTime = 1000*int(timeToSeconds(tokens[1]))
 
-   def __init__(self, pname, song, songname, data, goalhorn = True):
+   def __init__(self, pname, tname, song, songname, data, goalhorn = True):
       self.conditions = []
       self.song = song
       self.songname = songname
@@ -71,7 +103,7 @@ class ConditionList (Condition):
       self.isGoalhorn = goalhorn
       for token in data:
          tokens = token.split()
-         condition = self.buildCondition(pname, tokens, self.song)
+         condition = self.buildCondition(pname, tname, tokens, self.song)
          if condition is not None:
             self.conditions.append(condition)
    

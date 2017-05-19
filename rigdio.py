@@ -1,3 +1,4 @@
+import sys
 from os.path import isfile
 
 from tkinter import filedialog, Tk
@@ -12,9 +13,7 @@ from pyglet_gui.containers import VerticalContainer
 from rigparse import parse
 from gamestate import GameState
 
-import sys
-sys.stdout = open('rigdio.log', 'w')
-sys.stderr = sys.stdout
+import logger
 
 window = pyglet.window.Window(640, 480, resizable=True, vsync=True)
 batch = pyglet.graphics.Batch()
@@ -126,7 +125,9 @@ def open_home_file(is_pressed):
    f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
    if ( isfile(f) ):
       print("Loading music from "+f)
-      home = parse(f)
+      home, game.home_name = parse(f)
+      if game.home_name is None:
+         game.home_name = "HOME"
 
       # reset buttons
       initHomeButtons()
@@ -166,7 +167,9 @@ def open_away_file(is_pressed):
    f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
    if ( isfile(f) ):
       print("Loading music from "+f)
-      away = parse(f)
+      away, game.away_name = parse(f)
+      if game.away_name is None:
+         game.away_name = "AWAY"
 
       # reset Manager
       initAwayButtons()

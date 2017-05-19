@@ -2,6 +2,8 @@ class GameState:
    def __init__ (self):
       self.home_score = 0
       self.away_score = 0
+      self.home_name = "HOME"
+      self.away_name = "AWAY"
       self.scorers = {}
 
    def score (self, pname, home):
@@ -24,4 +26,6 @@ class GameState:
    def clear (self):
       self.home_score = 0
       self.away_score = 0
+      self.home_name = "HOME"
+      self.away_name = "AWAY"
       self.scorers = {}

@@ -1,8 +1,7 @@
 import os
 import vlc
 
-
-from os.path import abspath, isfile
+from os.path import abspath, isfile, basename, splitext
 from condition import ConditionList
 
 def loadsong(filename, vanthem = False):
@@ -20,9 +19,22 @@ def parse (filename):
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
    output = {}
+   
    # open filename
    with open(filename) as f:
       lines = [line.strip() for line in f.readlines()]
+
+   # get name
+   while len(lines[0]) == 0 and lines[0][0] == '#':
+      lines = lines[1:]
+   nameline = lines[0].split(';')
+   if len(nameline) < 2 or nameline[0] != "name":
+      print("No team name provided at start of file; defaulting to filename")
+      tname = splitext(basename(filename))[0]
+   else:
+      tname = nameline[1].lower()
+      lines = lines[1:]
+
    # iterate across lines
    for line in lines:
       # ignore comments
@@ -34,14 +46,16 @@ def parse (filename):
       if player not in output:
          output[player] = []
       filename = folder+data[1] # location of song, relative to location of export file
-      clist = ConditionList(data[0], loadsong(filename,player=='victory'), filename, data[2:])
+      clist = ConditionList(data[0], tname, loadsong(filename,player=='victory'), filename, data[2:])
       output[player].append(clist)
+   
    # copy default goalhorn onto the end of all player goalhorns
-   reserved = ['anthem', 'victory', 'goal'] # reserved names
+   reserved = ['anthem', 'victory', 'goal', 'name'] # reserved names
    for name, conditions in output.items():
       if ( name not in reserved ):
          output[name].extend(output['goal'])
-   return output
+   print("Loaded songs for team /{}/".format(tname))
+   return output, tname
 
 def main ():
    file = parse("./music/4cc/m/m.4ccm")
