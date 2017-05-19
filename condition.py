@@ -1,5 +1,7 @@
-from rigdio_util import timeToSeconds
+import threading
 from time import sleep
+
+from rigdio_util import timeToSeconds
 
 fadeTime = 3
 
@@ -84,16 +86,22 @@ class ConditionList (Condition):
 
    def pause (self):
       if self.isGoalhorn:
-         i = 100
-         while i > 0:
-            self.song.audio_set_volume(i)
-            sleep(fadeTime/100)
-            i -= 1
-      self.song.pause()
-      self.song.audio_set_volume(100)
+         fade = threading.Thread(target=fadeOut,args=(self.song,))
+         fade.start()
+      else:
+         self.song.pause()
 
    def check (self, gamestate):
       for condition in self.conditions:
          if not condition.check(gamestate):
             return False
       return True
+
+def fadeOut (song):
+   i = 100
+   while i > 0:
+      song.audio_set_volume(i)
+      sleep(fadeTime/100)
+      i -= 1
+   song.pause()
+   song.audio_set_volume(100)
