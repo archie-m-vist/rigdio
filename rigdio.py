@@ -178,11 +178,15 @@ def open_away_file(is_pressed):
       awayButtons.add(Label("Anthems"))
       temp = away.pop('anthem', None)
       if ( temp != None ):
+         for x in temp:
+            x.isGoalhorn = False
          awayButtons.add(PlayerButton('Anthem',temp,False))
       else:
          print("ERROR: no anthem specified in "+f+".")
       temp = away.pop('victory', None)
       if ( temp != None ):
+         for x in temp:
+            x.isGoalhorn = False
          awayButtons.add(PlayerButton('Victory Anthem',temp,False))
 
 
