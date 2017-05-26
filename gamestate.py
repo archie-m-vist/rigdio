@@ -53,6 +53,4 @@ class GameState:
    def clear (self):
       self.home_score = 0
       self.away_score = 0
-      self.home_name = "HOME"
-      self.away_name = "AWAY"
       self.scorers = {}
