@@ -9,6 +9,7 @@ class Condition:
    def __init__(self, pname, tname):
       self.pname = pname
       self.tname = tname
+      self.home = None
 
    def __str__(self):
       return "Always True"
@@ -41,8 +42,10 @@ class GoalCondition (Condition):
       goals = gamestate.player_goals(self.pname)
       return eval(str(goals)+self.comparison)
 
-def NotCondition (Condition):
+class NotCondition (Condition):
    def __init__(self, pname, tname, condition):
+      if condition is None:
+         raise ValueError("NotCondition requires a proper Condition object.")
       Condition.__init__(self,pname,tname)
       self.condition = condition
 
@@ -58,42 +61,51 @@ def NotCondition (Condition):
 class ComebackCondition (Condition):
    def __init__(self, pname, tname):
       Condition.__init__(self,pname,tname)
-      self.home = None
 
    def check(self,gamestate):
       if self.home == None:
          self.home = (gamestate.home_name == self.tname)
-      if self.home:
-         return gamestate.home_score <= gamestate.away_score and gamestate.away_score > 0
-      else:
-         return gamestate.away_score <= gamestate.home_score and gamestate.home_score > 0
+      return gamestate.team_score(self.home) <= gamestate.opponent_score(self.home) and gamestate.opponent_score(self.home) > 0
 
 class OpponentCondition (Condition):
    def __init__(self,pname,tname,tokens):
       Condition.__init__(self,pname,tname)
       self.other = tokens[0].lower()
-      self.home = None
 
    def check(self,gamestate):
       if self.home == None:
          self.home = (gamestate.home_name == self.tname)
-      if self.home:
-         return gamestate.away_name == self.other
-      else:
-         return gamestate.home_name == self.other
+      return gamestate.opponent_name(self.home) == self.other
+
+class FirstCondition (Condition):
+   def __init__(self, pname, tname):
+      Condition.__init__(self,pname,tname)
+   
+   def check (self, gamestate):
+      if self.home == None:
+         self.home = gamestate.is_home(self.tname)
+      return gamestate.team_score(self.home) == 1
 
 class ConditionList (Condition):
    def buildCondition(self, pname, tname, tokens, song):
       if ( tokens[0].lower() == "goals" ):
          return GoalCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "not" ):
-         return NotCondition(pname,tname,buildCondition(tokens[1:]))
+         try:
+            return NotCondition(pname,tname,self.buildCondition(pname,tname,tokens[1:],song))
+         except ValueError:
+            print("Bad condition type as NotCondition argument: {}".format(tokens[1]))
+            return None
       elif ( tokens[0].lower() == "comeback" ):
          return ComebackCondition(pname,tname)
       elif ( tokens[0].lower() == "opponent" ):
          return OpponentCondition(pname,tname,tokens[1:])
+      elif ( tokens[0].lower() == "first" ):
+         return FirstCondition(pname,tname)
+      # non-condition modifiers
       elif ( tokens[0].lower() == "start" ):
          self.startTime = 1000*int(timeToSeconds(tokens[1]))
+      return None
 
    def __init__(self, pname, tname, song, songname, data, goalhorn = True):
       self.conditions = []
