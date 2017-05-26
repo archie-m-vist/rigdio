@@ -28,9 +28,9 @@ class GameState:
 
    def opponent_name (self, home):
       if home:
-         return self.home_name
-      else:
          return self.away_name
+      else:
+         return self.home_name
 
    def team_score (self, home):
       if home:
