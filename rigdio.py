@@ -122,6 +122,7 @@ class PlayerButton (Button):
             self.song = None
 
 def open_home_file(is_pressed):
+   game.clear()
    f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
    if ( isfile(f) ):
       print("Loading music from "+f)
@@ -164,6 +165,7 @@ def open_home_file(is_pressed):
          homeButtons.add(defaultGoal)
 
 def open_away_file(is_pressed):
+   game.clear()
    f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
    if ( isfile(f) ):
       print("Loading music from "+f)
@@ -231,13 +233,9 @@ def initAwayButtons ():
       awayManager.delete()
    awayManager = Manager(awayButtons,window=window,batch=batch,theme=taway,offset=(150,70))
 
-def clearGameState (is_pressed):
-   game.clear()
-
 def main ():
    initHomeButtons()
    initAwayButtons()
-   Manager(OneTimeButton('Reset Game State',on_release=clearGameState),window=window, batch=batch,theme=tsyst,offset=(0,-200))
    try:
       pyglet.app.run()
    except:
