@@ -24,6 +24,10 @@ class Condition:
       """
       return True
 
+   def isInstruction (self):
+      return False
+
+
 class GoalCondition (Condition):
    def __init__(self, pname, tname, tokens):
       Condition.__init__(self,pname,tname)
@@ -86,13 +90,34 @@ class FirstCondition (Condition):
          self.home = gamestate.is_home(self.tname)
       return gamestate.team_score(self.home) == 1
 
+class Instruction:
+   """
+      Class used for something which modifies a ConditionPlayer without being a condition itself.
+   """
+   def isInstruction (self):
+      return True
+
+   """
+      Applies this instruction to the player. Returns True on success or False on failure.
+   """
+   def run (self, player):
+      return True
+
+class StartInstruction (Instruction):
+   def __init__ (self, timestring):
+      self.startTime = 1000*int(timeToSeconds(timestring))
+
+   def run (self, player):
+      player.song.set_time(self.startTime)
+      return True
+
 class ConditionList (Condition):
-   def buildCondition(self, pname, tname, tokens, song):
+   def buildCondition(self, pname, tname, tokens):
       if ( tokens[0].lower() == "goals" ):
          return GoalCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "not" ):
          try:
-            return NotCondition(pname,tname,self.buildCondition(pname,tname,tokens[1:],song))
+            return NotCondition(pname,tname,self.buildCondition(pname,tname,tokens[1:]))
          except ValueError:
             print("Bad condition type as NotCondition argument: {}".format(tokens[1]))
             return None
@@ -102,31 +127,44 @@ class ConditionList (Condition):
          return OpponentCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "first" ):
          return FirstCondition(pname,tname)
-      # non-condition modifiers
+      # instructions
       elif ( tokens[0].lower() == "start" ):
-         self.startTime = 1000*int(timeToSeconds(tokens[1]))
+         return StartInstruction(tokens[1])
       return None
 
-   def __init__(self, pname, tname, song, songname, data, goalhorn = True):
+   def __init__(self, pname, tname, data, songname):
       self.conditions = []
-      self.song = song
-      self.songname = songname
+      self.instructions = []
       self.startTime = 0
-      self.isGoalhorn = goalhorn
+      self.songname = songname
       for token in data:
          tokens = token.split()
-         condition = self.buildCondition(pname, tname, tokens, self.song)
-         if condition is not None:
+         condition = self.buildCondition(pname, tname, tokens)
+         if condition.isInstruction:
+            self.instructions.append(condition)
+         else:
             self.conditions.append(condition)
+
    
    def __str__(self):
       return str(self.conditions)+": "+self.songname
 
+   def check (self, gamestate):
+      for condition in self.conditions:
+         if not condition.check(gamestate):
+            return False
+      return True
+
+class ConditionPlayer (ConditionList):
+   def __init__ (self, pname, tname, data, songname, song, goalhorn = True):
+      ConditionList.__init__(self,pname,tname,data,songname)
+      self.song = song
+      self.isGoalhorn = goalhorn
+      for instruction in self.instructions:
+         instruction.run(self)
+
    def play (self):
       self.song.play()
-      if self.startTime is not 0:
-         self.song.set_time(self.startTime)
-         self.startTime = 0
 
    def pause (self):
       if self.isGoalhorn:
@@ -134,12 +172,7 @@ class ConditionList (Condition):
          fade.start()
       else:
          self.song.pause()
-
-   def check (self, gamestate):
-      for condition in self.conditions:
-         if not condition.check(gamestate):
-            return False
-      return True
+   
 
 def fadeOut (song):
    i = 100

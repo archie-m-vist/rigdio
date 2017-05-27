@@ -2,7 +2,7 @@ import os
 import vlc
 
 from os.path import abspath, isfile, basename, splitext
-from condition import ConditionList
+from condition import ConditionList, ConditionPlayer
 
 def loadsong(filename, vanthem = False):
    print("Attempting to load "+filename)
@@ -15,7 +15,7 @@ def loadsong(filename, vanthem = False):
    return source
 
 """Parses a music export file and loads it into memory."""
-def parse (filename):
+def parse (filename, load = True):
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
    output = {}
@@ -25,7 +25,7 @@ def parse (filename):
       lines = [line.strip() for line in f.readlines()]
 
    # get name
-   while len(lines[0]) == 0 and lines[0][0] == '#':
+   while len(lines[0]) == 0 or lines[0][0] == '#':
       lines = lines[1:]
    nameline = lines[0].split(';')
    if len(nameline) < 2 or nameline[0] != "name":
@@ -46,7 +46,10 @@ def parse (filename):
       if player not in output:
          output[player] = []
       filename = folder+data[1] # location of song, relative to location of export file
-      clist = ConditionList(data[0], tname, loadsong(filename,player=='victory'), filename, data[2:])
+      if load:
+         clist = ConditionPlayer(data[0], tname, data[2:], filename, loadsong(filename,player=='victory'), (player != "anthem" and player != "victory"))
+      else:
+         clist = ConditionList(data[0], tname, data[2:], filename)
       output[player].append(clist)
    
    # copy default goalhorn onto the end of all player goalhorns
