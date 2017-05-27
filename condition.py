@@ -12,7 +12,7 @@ class Condition:
       self.home = None
 
    def __str__(self):
-      return "Always True"
+      return "nullCond"
    __repr__ = __str__
 
    def check(self, gamestate):
@@ -39,7 +39,7 @@ class GoalCondition (Condition):
       self.comparison = tokens[0]+" "+tokens[1]
    
    def __str__(self):
-      return "If Goals "+self.comparison
+      return "goals {}".format(self.comparison)
    __repr__ = __str__
 
    def check(self, gamestate):
@@ -54,10 +54,10 @@ class NotCondition (Condition):
       self.condition = condition
 
    def __str__(self):
-      return "Not "+str(self.condition)
+      return "not {}".format(str(self.condition))
 
    def __repr__(self):
-      return "Not "+repr(self.condition)
+      return "not {}".format(repr(self.condition))
 
    def check(self, gamestate):
       return not self.condition.check(gamestate)
@@ -71,6 +71,10 @@ class ComebackCondition (Condition):
          self.home = (gamestate.home_name == self.tname)
       return gamestate.team_score(self.home) <= gamestate.opponent_score(self.home) and gamestate.opponent_score(self.home) > 0
 
+   def __str__(self):
+      return "comeback"
+   __repr__ = __str__
+
 class OpponentCondition (Condition):
    def __init__(self,pname,tname,tokens):
       Condition.__init__(self,pname,tname)
@@ -81,6 +85,10 @@ class OpponentCondition (Condition):
          self.home = (gamestate.home_name == self.tname)
       return gamestate.opponent_name(self.home) == self.other
 
+   def __str__(self):
+      return "opponent {}".format(self.other)
+   __repr__ = __str__
+
 class FirstCondition (Condition):
    def __init__(self, pname, tname):
       Condition.__init__(self,pname,tname)
@@ -89,6 +97,10 @@ class FirstCondition (Condition):
       if self.home == None:
          self.home = gamestate.is_home(self.tname)
       return gamestate.team_score(self.home) == 1
+
+   def __str__(self):
+      return "first"
+   __repr__ = __str__
 
 class Instruction:
    """
@@ -103,13 +115,21 @@ class Instruction:
    def run (self, player):
       return True
 
+   def __str__(self):
+      return "nullInst"
+   __repr__ = __str__
+
 class StartInstruction (Instruction):
    def __init__ (self, timestring):
+      self.rawTime = timestring
       self.startTime = 1000*int(timeToSeconds(timestring))
 
    def run (self, player):
       player.song.set_time(self.startTime)
       return True
+
+   def __str__(self):
+      return "start {}".format(self.rawTime)
 
 class ConditionList (Condition):
    def buildCondition(self, pname, tname, tokens):
