@@ -23,6 +23,7 @@ def parse (filename, load = True):
    # open filename
    with open(filename) as f:
       lines = [line.strip() for line in f.readlines()]
+      f.close()
 
    # get name
    while len(lines[0]) == 0 or lines[0][0] == '#':
@@ -53,10 +54,11 @@ def parse (filename, load = True):
       output[player].append(clist)
    
    # copy default goalhorn onto the end of all player goalhorns
-   reserved = ['anthem', 'victory', 'goal', 'name'] # reserved names
-   for name, conditions in output.items():
-      if ( name not in reserved ):
-         output[name].extend(output['goal'])
+   if load:
+      reserved = ['anthem', 'victory', 'goal', 'name'] # reserved names
+      for name, conditions in output.items():
+         if ( name not in reserved ):
+            output[name].extend(output['goal'])
    print("Loaded songs for team /{}/".format(tname))
    return output, tname
 

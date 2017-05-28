@@ -1,5 +1,6 @@
 import threading
 from time import sleep
+from os.path import basename
 
 from rigdio_util import timeToSeconds
 
@@ -167,7 +168,13 @@ class ConditionList (Condition):
 
    
    def __str__(self):
-      return str(self.conditions)+": "+self.songname
+      output = "{}".format(basename(self.songname))
+      for condition in self.conditions:
+         output = output + ";" + str(condition)
+      for instruction in self.instructions:
+         output = output + ";" + str(instruction)
+      return output
+   __repr__ = __str__
 
    def check (self, gamestate):
       for condition in self.conditions:

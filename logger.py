@@ -2,9 +2,9 @@
 import sys
 
 class Logger(object):
-   def __init__(self):
+   def __init__(self, filename = "rigdio.log"):
       self.terminal = sys.stdout
-      self.log = open("rigdio.log", "w")
+      self.log = open(filename, "w")
 
    def __del__(self):
       sys.stdout = self.terminal
@@ -17,7 +17,6 @@ class Logger(object):
    def flush(self):
       self.terminal.flush()
       self.log.flush()
-
 
 sys.stdout = Logger()
 sys.stderr = sys.stdout
