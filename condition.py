@@ -176,6 +176,15 @@ class ConditionList (Condition):
       return output
    __repr__ = __str__
 
+   def __len__ (self):
+      return len(self.conditions)
+
+   def __iter__ (self):
+      return self.conditions.__iter__()
+
+   def __getitem__ (self, key):
+      return self.conditions[key]
+
    def check (self, gamestate):
       for condition in self.conditions:
          if not condition.check(gamestate):
