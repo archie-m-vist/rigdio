@@ -161,10 +161,11 @@ class ConditionList (Condition):
       for token in data:
          tokens = token.split()
          condition = self.buildCondition(pname, tname, tokens)
-         if condition.isInstruction:
+         if condition.isInstruction():
             self.instructions.append(condition)
          else:
             self.conditions.append(condition)
+      self.all = self.conditions + self.instructions
 
    
    def __str__(self):
@@ -177,13 +178,13 @@ class ConditionList (Condition):
    __repr__ = __str__
 
    def __len__ (self):
-      return len(self.conditions)
+      return len(self.all)
 
    def __iter__ (self):
-      return self.conditions.__iter__()
+      return self.all.__iter__()
 
    def __getitem__ (self, key):
-      return self.conditions[key]
+      return self.all(key)
 
    def check (self, gamestate):
       for condition in self.conditions:
