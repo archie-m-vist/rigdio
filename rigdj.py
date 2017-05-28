@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 import tkinter.font
+from condition import ConditionList
 from rigparse import parse
 
 from logger import Logger
@@ -17,13 +18,13 @@ from rigdj_util import *
 class SongRow:
    def __init__ (self, master, clist):
       self.master = master
+      self.clist = clist
       self.songName = StringVar()
       self.songNameEntry = Entry(self.master, textvariable = self.songName)
       self.songNameEntry.insert(0,clist.songname)
       self.songNameButton = Button(self.master, text="Open File", command=self.findSong)
       self.newConditionButton = Button(self.master, text="New Condition", command=self.newCondition)
       self.conditionButtons = []
-      print(clist, len(clist))
       for condition in clist:
          button = Button(self.master, text=str(condition), command=lambda: print(condition))
          self.conditionButtons.append(button)
@@ -42,6 +43,7 @@ class SongRow:
       self.newConditionButton.grid_forget()
       for button in self.conditionButtons:
          button.grid_forget()
+      self.clist.songname = self.songName.get()
 
    def findSong (self):
       songname = filedialog.askopenfilename(filetypes = (("Audio Files","*.mp3 *.wav *.ogg *.flac"), ("All Files", "*")))
@@ -94,6 +96,8 @@ class Editor:
       ## new song buton
       self.newSongButton = Button(self.master, text="New Song", command=self.newSong)
 
+      self.updatePlayerMenu()
+
    def load4ccm (self):
       self.filename = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
       self.players, teamName = parse(self.filename,False)
@@ -117,6 +121,7 @@ class Editor:
       if self.playerMenu is not None:
          self.playerMenu.grid_forget()
       plist = list(self.players.keys())
+      print(plist)
       self.playerMenu = OptionMenu(self.master, self.player,*plist, command=self.updateSongMenu)
       setMaxWidth(plist,self.playerMenu)
       self.playerMenu.grid(row = 2, column = 1)
@@ -125,11 +130,12 @@ class Editor:
    def newSong (self):
       name = self.player.get()
       self.players[name].append(ConditionList(name, self.teamEntry.get(), [], "New Song"))
-      updateSongMenu()
+      self.updateSongMenu(name)
 
    def updateSongMenu (self, name):
       for row in self.songMenu:
          row.clear()
+      self.newSongButton.grid_forget()
       self.songMenu = []
       print("Displaying songs for player {}.".format(name))
       clists = self.players[name]
@@ -139,6 +145,7 @@ class Editor:
          conditionRow.draw(row)
          self.songMenu.append(conditionRow)
          row += 1
+      self.newSongButton.grid(row = row, column = 0)
 
    def writefile (self,filename):
       with open(filename, 'w') as outfile:
@@ -157,7 +164,7 @@ class Editor:
          return
       else:
          self.players[name] = []
-         updatePlayerMenu()
+         self.updatePlayerMenu()
 
 
 def main ():
