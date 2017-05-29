@@ -1,8 +1,9 @@
 from tkinter import *
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
+from tkinter.simpledialog import Dialog
 import tkinter.font
-from condition import ConditionList
+from condition import *
 from rigparse import parse
 
 from logger import Logger
@@ -15,18 +16,113 @@ from rigdj_util import *
 #  3 - headings
 # 3+ - songs and conditions
 
-class SongRow:
-   def __init__ (self, master, clist):
+class ConditionEditor (Dialog):
+   def conditions ():
+      output = {
+         "goals" : GoalCondition,
+         "comeback" : ComebackCondition,
+         "first" : FirstCondition,
+         "opponent" : OpponentCondition,
+         "not" : NotCondition,
+         "start" : StartInstruction
+      }
+      return output
+
+   def defaultTokens ():
+      output = {
+         "goals" : ["==",2],
+         "comeback" : [],
+         "first" : [],
+         "opponent" : [""],
+         "not" : [],
+         "start" : ["0:00"]  
+      }
+      return output
+
+   def __init__ (self, master, index, clist):
+      self.pname = clist.pname
+      self.tname = clist.tname
+      self.index = index
+      self.condition = None
+      self.tokens = []
+      self.fields = []
+      self.elements = []
       self.master = master
+      if index < len(clist):
+         self.condition = clist[self.index]
+         self.tokens = self.condition.tokens()
+      Dialog.__init__(self,master,"Editing Condition")
+
+   def body (self, master):
+      Label(master, text="Condition Type").grid(row=0,column=0)
+      self.master = master
+      self.conditionType = StringVar()
+      self.conditionType.set("")
+      conditions = list(ConditionEditor.conditions().keys())
+      conditions.sort()
+      self.conditionTypeMenu = OptionMenu(master, self.conditionType, *list(ConditionEditor.conditions().keys()), command=self.changeConditionType)
+      setMaxWidth(conditions,self.conditionTypeMenu)
+      self.conditionTypeMenu.grid(row=0,column=1)
+      if self.condition is not None:
+         self.conditionType.set(self.condition.type())
+         self.changeConditionType(self.condition.type(),False)
+
+   def apply (self):
+      self.tokens = [str(x.get()) for x in self.fields]
+      self.condition = ConditionEditor.conditions()[self.conditionType.get()](self.pname, self.tname, self.tokens)
+
+   def changeConditionType (self, value, refreshTokens = True):
+      if value is "":
+         return None
+      # reset existing elements and fields if any
+      self.fields = []
+      for element in self.elements:
+         element.grid_forget()
+      self.elements = []
+      # refresh tokens to default if refreshing tokens
+      if refreshTokens:
+         self.tokens = ConditionEditor.defaultTokens()[value]
+      if value == "goals":
+         self.elements.append(Label(self.master, text="Goals By Player"))
+         self.elements[0].grid(row=1,column=0)
+         # operator
+         self.fields.append(StringVar())
+         self.fields[0].set(self.tokens[0])
+         operators = ["==", "!=", "<", ">", "<=", ">="]
+         opSelector = OptionMenu(self.master, self.fields[0], *operators)
+         setMaxWidth(operators, opSelector)
+         opSelector.grid(row=1,column=1)
+         self.elements.append(opSelector)
+         # value
+         self.fields.append(IntVar())
+         self.fields[1].set(int(self.tokens[1]))
+         countEntry = Entry(self.master, textvariable=self.fields[1])
+         countEntry.grid(row=1,column=2)
+         self.elements.append(countEntry)
+      elif value == "comeback":
+         pass
+      elif value == "first":
+         pass
+      elif value == "opponent":
+         pass
+      elif value == "not":
+         pass
+      elif value == "start":
+         pass
+
+class SongRow:
+   def __init__ (self, editor, clist):
+      self.editor = editor
+      self.master = self.editor.master
       self.clist = clist
       self.songName = StringVar()
       self.songNameEntry = Entry(self.master, textvariable = self.songName)
-      self.songNameEntry.insert(0,clist.songname)
+      self.songNameEntry.insert(0,self.clist.songname)
       self.songNameButton = Button(self.master, text="Open File", command=self.findSong)
       self.newConditionButton = Button(self.master, text="New Condition", command=self.newCondition)
       self.conditionButtons = []
-      for condition in clist:
-         button = Button(self.master, text=str(condition), command=lambda: print(condition))
+      for index in range(len(self.clist)):
+         button = Button(self.master, text=str(self.clist[index]), command=lambda: self.editCondition(index))
          self.conditionButtons.append(button)
 
    def draw (self, row):
@@ -53,10 +149,30 @@ class SongRow:
    def newCondition (self):
       print("new condition!")
 
+   def editCondition (self, index):
+      if (index < 0 or index >= len(self.clist) ):
+         raise ValueError("Somehow editing nonexistent condition.")
+      result = ConditionEditor(self.master,index,self.clist).condition
+      try:
+         if result is not None:
+            self.clist[index] = result
+            print(self.clist)
+            self.editor.updateSongMenu(self.clist.pname)
+      except Exception as e:
+         print("error saving result:",e)
+
+
 class Editor:
    def __init__ (self, master):
       # tkinter master window
       self.master = master
+      # save/load
+      self.loadButton = Button(self.master, text="Load .4ccm", command=self.load4ccm)
+      self.loadButton.grid(row = 0, column = 0,sticky=E+W)
+      self.saveButton = Button(self.master, text="Save .4ccm", command=self.save4ccm)
+      self.saveButton.grid(row = 0, column = 1,sticky=E+W)
+      self.saveAsButton = Button(self.master, text="Save .4ccm As...", command=self.save4ccmas)
+      self.saveAsButton.grid(row = 0, column = 2,sticky=E+W)
       # file name of the .4ccm
       self.filename = None
       # team name
@@ -66,6 +182,7 @@ class Editor:
       # dict mapping players to lists of ConditionList objects
       self.players = {"Anthem" : [], "Goalhorn" : [], "Victory Anthem" : []}
       plist = list(self.players.keys())
+      plist.sort()
       # player dropdown menu
       ## label
       Label(self.master, text="Player:", font="-weight bold").grid(row=2,column = 0,sticky=W)
@@ -81,13 +198,6 @@ class Editor:
       self.playerEntry.grid(row = 2,column = 2)
       self.playerButton = Button(self.master, text="Add Player", command=self.newplayer)
       self.playerButton.grid(row = 2, column = 3)
-      # save/load
-      self.loadButton = Button(self.master, text="Load .4ccm", command=self.load4ccm)
-      self.loadButton.grid(row = 0, column = 0)
-      self.saveButton = Button(self.master, text="Save .4ccm", command=self.save4ccm)
-      self.saveButton.grid(row = 0, column = 1)
-      self.saveAsButton = Button(self.master, text="Save .4ccm As...", command=self.save4ccmas)
-      self.saveAsButton.grid(row = 0, column = 2)
       # song listing menu
       self.songMenu = []
       ## headings
@@ -121,7 +231,7 @@ class Editor:
       if self.playerMenu is not None:
          self.playerMenu.grid_forget()
       plist = list(self.players.keys())
-      print(plist)
+      plist.sort()
       self.playerMenu = OptionMenu(self.master, self.player,*plist, command=self.updateSongMenu)
       setMaxWidth(plist,self.playerMenu)
       self.playerMenu.grid(row = 2, column = 1)
@@ -141,7 +251,7 @@ class Editor:
       clists = self.players[name]
       row = 4
       for clist in clists:
-         conditionRow = SongRow(self.master,clist)
+         conditionRow = SongRow(self,clist)
          conditionRow.draw(row)
          self.songMenu.append(conditionRow)
          row += 1

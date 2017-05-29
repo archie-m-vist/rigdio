@@ -26,7 +26,24 @@ class Condition:
       return True
 
    def isInstruction (self):
+      """
+         Checks if something is a Condition or an Instruction. There is no need to override this.
+
+         Return:
+          - <code>True</code> if the object is an Instruction, <code>False</code> if the object is a Condition.
+      """
       return False
+
+   def type (self):
+      return str(self).split(" ")[0]
+
+   def tokens (self):
+      """
+         Gives this Condition as a list of tokens, EXCLUDING the type of the condition.
+
+         In essence, these are the tokens passed to the constructor.
+      """
+      return str(self).split(" ")[1:]
 
 
 class GoalCondition (Condition):
@@ -48,11 +65,9 @@ class GoalCondition (Condition):
       return eval(str(goals)+self.comparison)
 
 class NotCondition (Condition):
-   def __init__(self, pname, tname, condition):
-      if condition is None:
-         raise ValueError("NotCondition requires a proper Condition object.")
+   def __init__(self, pname, tname, tokens):
       Condition.__init__(self,pname,tname)
-      self.condition = condition
+      self.condition = ConditionList.buildCondition(pname,tname,tokens)
 
    def __str__(self):
       return "not {}".format(str(self.condition))
@@ -64,7 +79,7 @@ class NotCondition (Condition):
       return not self.condition.check(gamestate)
 
 class ComebackCondition (Condition):
-   def __init__(self, pname, tname):
+   def __init__(self, pname, tname, tokens):
       Condition.__init__(self,pname,tname)
 
    def check(self,gamestate):
@@ -79,19 +94,19 @@ class ComebackCondition (Condition):
 class OpponentCondition (Condition):
    def __init__(self,pname,tname,tokens):
       Condition.__init__(self,pname,tname)
-      self.other = tokens[0].lower()
+      self.others = [x.lower() for x in tokens]
 
    def check(self,gamestate):
       if self.home == None:
          self.home = (gamestate.home_name == self.tname)
-      return gamestate.opponent_name(self.home) == self.other
+      return gamestate.opponent_name(self.home) in self.others
 
    def __str__(self):
-      return "opponent {}".format(self.other)
+      return "opponent {}".format(" ".join(self.others))
    __repr__ = __str__
 
 class FirstCondition (Condition):
-   def __init__(self, pname, tname):
+   def __init__(self, pname, tname,tokens):
       Condition.__init__(self,pname,tname)
    
    def check (self, gamestate):
@@ -105,13 +120,15 @@ class FirstCondition (Condition):
 
 class Instruction:
    """
-      Class used for something which modifies a ConditionPlayer without being a condition itself.
+      Class used for something which modifies a ConditionPlayer rather than determining when it will play.
+
+      This is a purely internal distinction; Instruction and Condition objects are manipulated and created the same ways.
    """
    def isInstruction (self):
       return True
 
    """
-      Applies this instruction to the player. Returns True on success or False on failure.
+      Applies this instruction to a given media player object. Returns True on success or False on failure.
    """
    def run (self, player):
       return True
@@ -119,6 +136,17 @@ class Instruction:
    def __str__(self):
       return "nullInst"
    __repr__ = __str__
+
+   def type (self):
+      return str(self).split(" ")[0]
+
+   def tokens (self):
+      """
+         Gives this Instruction as a list of tokens, EXCLUDING the type of the condition.
+
+         In essence, these are the tokens passed to the constructor.
+      """
+      return str(self).split(" ")[1:]
 
 class StartInstruction (Instruction):
    def __init__ (self, timestring):
@@ -133,12 +161,12 @@ class StartInstruction (Instruction):
       return "start {}".format(self.rawTime)
 
 class ConditionList (Condition):
-   def buildCondition(self, pname, tname, tokens):
+   def buildCondition(pname, tname, tokens):
       if ( tokens[0].lower() == "goals" ):
          return GoalCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "not" ):
          try:
-            return NotCondition(pname,tname,self.buildCondition(pname,tname,tokens[1:]))
+            return NotCondition(pname,tname,tokens[1:])
          except ValueError:
             print("Bad condition type as NotCondition argument: {}".format(tokens[1]))
             return None
@@ -154,19 +182,27 @@ class ConditionList (Condition):
       return None
 
    def __init__(self, pname, tname, data, songname):
+      self.pname = pname
+      self.tname = tname
+      self.songname = songname
       self.conditions = []
       self.instructions = []
       self.startTime = 0
-      self.songname = songname
       for token in data:
          tokens = token.split()
-         condition = self.buildCondition(pname, tname, tokens)
+         condition = ConditionList.buildCondition(pname, tname, tokens)
          if condition.isInstruction():
             self.instructions.append(condition)
          else:
             self.conditions.append(condition)
       self.all = self.conditions + self.instructions
 
+   def append (self, item):
+      self.all.append(item)
+      if item.isInstruction():
+         self.instructions.append(item)
+      else:
+         self.conditions.append(item)
    
    def __str__(self):
       output = "{}".format(basename(self.songname))
@@ -184,7 +220,18 @@ class ConditionList (Condition):
       return self.all.__iter__()
 
    def __getitem__ (self, key):
-      return self.all(key)
+      return self.all[key]
+
+   def __setitem__ (self, key, value):
+      temp = self.all[key]
+      if temp.isInstruction():
+         index = self.instructions.index(temp)
+         self.instructions[index] = value
+      else:
+         index = self.conditions.index(temp)
+         self.conditions[index] = value
+      # insert new value where it was
+      self.all[key] = value
 
    def check (self, gamestate):
       for condition in self.conditions:
