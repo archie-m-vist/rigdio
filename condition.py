@@ -7,13 +7,15 @@ from rigdio_util import timeToSeconds
 fadeTime = 3
 
 class Condition:
+   null = "nullCond"
+
    def __init__(self, pname, tname):
       self.pname = pname
       self.tname = tname
       self.home = None
 
    def __str__(self):
-      return "nullCond"
+      return Condition.null
    __repr__ = __str__
 
    def check(self, gamestate):
@@ -45,8 +47,9 @@ class Condition:
       """
       return str(self).split(" ")[1:]
 
-
 class GoalCondition (Condition):
+   desc = """Plays when the number of goals this player has scored meet the condition."""
+
    def __init__(self, pname, tname, tokens):
       Condition.__init__(self,pname,tname)
       operators = ["<", ">", "<=", ">=", "=="]
@@ -65,9 +68,14 @@ class GoalCondition (Condition):
       return eval(str(goals)+self.comparison)
 
 class NotCondition (Condition):
-   def __init__(self, pname, tname, tokens):
+   desc = """Plays when the given condition is false."""
+
+   def __init__(self, pname, tname, tokens = [], condition = None):
       Condition.__init__(self,pname,tname)
-      self.condition = ConditionList.buildCondition(pname,tname,tokens)
+      if condition is None:
+         self.condition = ConditionList.buildCondition(pname,tname,tokens)
+      else:
+         self.condition = condition
 
    def __str__(self):
       return "not {}".format(str(self.condition))
@@ -79,6 +87,8 @@ class NotCondition (Condition):
       return not self.condition.check(gamestate)
 
 class ComebackCondition (Condition):
+   desc = """Plays when the team was behind prior to this goal being scored."""
+
    def __init__(self, pname, tname, tokens):
       Condition.__init__(self,pname,tname)
 
@@ -92,6 +102,8 @@ class ComebackCondition (Condition):
    __repr__ = __str__
 
 class OpponentCondition (Condition):
+   desc = """Plays when the opponent is one of the listed teams (separated by spaces, exclude slashes from ends)."""
+
    def __init__(self,pname,tname,tokens):
       Condition.__init__(self,pname,tname)
       self.others = [x.lower() for x in tokens]
@@ -106,6 +118,8 @@ class OpponentCondition (Condition):
    __repr__ = __str__
 
 class FirstCondition (Condition):
+   desc = """Plays if this is the first goal that the team has scored in this match."""
+
    def __init__(self, pname, tname,tokens):
       Condition.__init__(self,pname,tname)
    
@@ -149,6 +163,8 @@ class Instruction:
       return str(self).split(" ")[1:]
 
 class StartInstruction (Instruction):
+   desc = """Starts the file at the given time (in min:sec format)."""
+
    def __init__ (self, timestring):
       self.rawTime = timestring
       self.startTime = 1000*int(timeToSeconds(timestring))
@@ -162,7 +178,9 @@ class StartInstruction (Instruction):
 
 class ConditionList (Condition):
    def buildCondition(pname, tname, tokens):
-      if ( tokens[0].lower() == "goals" ):
+      if len(tokens) == 0:
+         return None
+      elif ( tokens[0].lower() == "goals" ):
          return GoalCondition(pname,tname,tokens[1:])
       elif ( tokens[0].lower() == "not" ):
          try:
@@ -232,6 +250,14 @@ class ConditionList (Condition):
          self.conditions[index] = value
       # insert new value where it was
       self.all[key] = value
+
+   def pop (self, index = 0):
+      item = self.all.pop(index)
+      if item.isInstruction():
+         self.instructions.remove(item)
+      else:
+         self.conditions.remove(item)
+      return item
 
    def check (self, gamestate):
       for condition in self.conditions:

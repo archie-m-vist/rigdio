@@ -10,18 +10,27 @@ def setMaxWidth(stringList, element):
 
    element.config(width=w)
 
-def uiConvert (players):
-   """
-      Converts a players dictionary read from a 4ccm file from keyword names to human-readable names.
-   """
+def uiName (player):
    uiNames = {
       "anthem" : "Anthem",
       "goal" : "Goalhorn",
       "victory" : "Victory Anthem",
    }
+   if player in uiNames:
+      return uiNames[player]
+   else:
+      return player
+
+def uiConvert (players):
+   """
+      Converts a players dictionary read from a 4ccm file from keyword names to human-readable names.
+
+      Note that this does NOT change the pname values inside the condition lists themselves.
+   """
    for key in players.keys():
-      if key in uiNames:
-         players[uiNames[key]] = players[key]
+      temp = uiName(key)
+      if temp != key:
+         players[temp] = players[key]
          players.pop(key)
 
 def outConvert (players):

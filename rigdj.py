@@ -39,81 +39,196 @@ class ConditionEditor (Dialog):
       }
       return output
 
-   def __init__ (self, master, index, clist):
-      self.pname = clist.pname
-      self.tname = clist.tname
-      self.index = index
-      self.condition = None
+   def __init__ (self, master, condition, new = False):
+      self.condition = condition
+      self.master = master
+      self.pname = condition.pname
+      self.tname = condition.tname
       self.tokens = []
+      self.subConditions = []
+      if str(self.condition) != "nullCond":
+         self.tokens = self.condition.tokens()
+         self.updateSubConditions()
+      # UI information
       self.fields = []
       self.elements = []
-      self.master = master
-      if index < len(clist):
-         self.condition = clist[self.index]
-         self.tokens = self.condition.tokens()
+      # check if new 
+      self.new = new
       Dialog.__init__(self,master,"Editing Condition")
 
-   def body (self, master):
-      Label(master, text="Condition Type").grid(row=0,column=0)
-      self.master = master
+   def body (self, frame):
+      self.bodyFrame = frame
       self.conditionType = StringVar()
       self.conditionType.set("")
+      if str(self.condition) != "nullCond":
+         self.conditionType.set(self.condition.type())
+      # condition type selector
+      conditionTypeMenu, self.conditionDescLabel = self.buildConditionTypeMenu()
+      conditionTypeMenu.pack()
+      
+      self.mainEditor = Frame(frame)
+      self.mainEditor.pack()
+      self.changeConditionType(self.conditionType.get(),False)
+
+   def buildConditionTypeMenu (self):
+      """
+         Builds the condition type selector and docstring menu.
+      """
+      frame = Frame(self.bodyFrame)
+      selectorFrame = Frame(frame)
+      Label(selectorFrame, text="Condition Type", font="-weight bold").pack(side=LEFT)
       conditions = list(ConditionEditor.conditions().keys())
       conditions.sort()
-      self.conditionTypeMenu = OptionMenu(master, self.conditionType, *list(ConditionEditor.conditions().keys()), command=self.changeConditionType)
-      setMaxWidth(conditions,self.conditionTypeMenu)
-      self.conditionTypeMenu.grid(row=0,column=1)
-      if self.condition is not None:
-         self.conditionType.set(self.condition.type())
-         self.changeConditionType(self.condition.type(),False)
+      selector = OptionMenu(selectorFrame, self.conditionType, *list(ConditionEditor.conditions().keys()), command=self.changeConditionType)
+      setMaxWidth(conditions,selector)
+      selector.pack(side=LEFT)
+      selectorFrame.pack()
+      # condition description
+      descLabelFrame = Frame(frame)
+      descLabel = Label(descLabelFrame, text="", anchor=W, justify=LEFT, wraplength="10c")
+      descLabel.pack()
+      Label(descLabelFrame, text="", width=60).pack()
+      descLabelFrame.pack()
+      return frame, descLabel
+
+   def validate (self):
+      ctype = self.conditionType.get()
+      if ctype == "goals":
+         try: 
+            int(self.fields[1].get())
+         except:
+            messagebox.showwarning("Input Error", "Goals instruction must be compared to an integer.")
+            return False
+      elif ctype == "start":
+         if timeToSeconds(self.fields[0].get()) is None:
+            messagebox.showwarning("Input Error", "Start instruction requires a time formatted as any of: day:hour:min:sec, hour:min:sec, min:sec, or sec.")
+            return False
+      elif ctype == "not":
+         if self.subConditions[0] == None:
+            messagebox.showwarning("Input Error", "No condition defined for not condition.")
+      return True
 
    def apply (self):
       self.tokens = [str(x.get()) for x in self.fields]
-      self.condition = ConditionEditor.conditions()[self.conditionType.get()](self.pname, self.tname, self.tokens)
+      ctype = self.conditionType.get()
+      if ctype == "opponent":
+         self.tokens = self.tokens[0].split(" ")
+      
+      if ctype == "not":
+         self.condition = NotCondition(self.pname, self.tname, condition = self.subConditions[0])
+      else:
+         self.condition = ConditionEditor.conditions()[ctype](self.pname, self.tname, self.tokens)
 
-   def changeConditionType (self, value, refreshTokens = True):
-      if value is "":
-         return None
+   def buttonbox(self):
+        box = Frame(self)
+
+        w = Button(box, text="OK", width=10, command=self.ok, default=ACTIVE)
+        w.pack(side=LEFT, padx=5, pady=5)
+        if not self.new:
+           w = Button(box, text="Delete", width=10, command=self.delete)
+           w.pack(side=LEFT, padx=5, pady=5)
+        w = Button(box, text="Cancel", width=10, command=self.cancel)
+        w.pack(side=LEFT, padx=5, pady=5)
+
+        self.bind("<Return>", self.ok)
+        self.bind("<Escape>", self.cancel)
+
+        box.pack()
+
+   def delete (self):
+      self.condition = -1
+      self.cancel()
+
+   def changeConditionType (self, value, resetTokens = True):
       # reset existing elements and fields if any
       self.fields = []
       for element in self.elements:
          element.grid_forget()
       self.elements = []
-      # refresh tokens to default if refreshing tokens
-      if refreshTokens:
+      
+      # update description label
+      if value == "":
+         desc = "No condition type selected."
+      else:
+         desc = ConditionEditor.conditions()[value].desc
+      self.conditionDescLabel['text'] = desc
+
+      # if no type selected, we're done
+      if value is "":
+         return None
+
+      # reset tokens to default if necessary
+      if resetTokens:
          self.tokens = ConditionEditor.defaultTokens()[value]
+         self.subConditions = []
+
+      # construct body of each condition type
       if value == "goals":
-         self.elements.append(Label(self.master, text="Goals By Player"))
-         self.elements[0].grid(row=1,column=0)
+         self.elements.append(Label(self.mainEditor, text="Goals By Player"))
+         self.elements[-1].grid(row=2,column=0,sticky=W)
          # operator
          self.fields.append(StringVar())
          self.fields[0].set(self.tokens[0])
          operators = ["==", "!=", "<", ">", "<=", ">="]
-         opSelector = OptionMenu(self.master, self.fields[0], *operators)
+         opSelector = OptionMenu(self.mainEditor, self.fields[0], *operators)
          setMaxWidth(operators, opSelector)
-         opSelector.grid(row=1,column=1)
+         opSelector.grid(row=2,column=1,sticky=W)
          self.elements.append(opSelector)
          # value
-         self.fields.append(IntVar())
-         self.fields[1].set(int(self.tokens[1]))
-         countEntry = Entry(self.master, textvariable=self.fields[1])
-         countEntry.grid(row=1,column=2)
+         self.fields.append(StringVar())
+         self.fields[1].set(str(self.tokens[1]))
+         countEntry = Entry(self.mainEditor, textvariable=self.fields[1])
+         countEntry.grid(row=2,column=2,sticky=W)
          self.elements.append(countEntry)
       elif value == "comeback":
+         # comeback takes no arguments
          pass
       elif value == "first":
+         # first takes no arguments
          pass
       elif value == "opponent":
-         pass
+         self.elements.append(Label(self.mainEditor, text="Opponent is Any Of"))
+         self.elements[-1].grid(row=2,column=0,sticky=W)
+         self.fields.append(StringVar())
+         opponentEntry = Entry(self.mainEditor, textvariable=self.fields[0])
+         opponentEntry.grid(row=2,column=1,sticky=W+E)
+         self.elements.append(opponentEntry)
       elif value == "not":
+         self.elements.append(Label(self.mainEditor, text="Not"))
+         self.elements[-1].grid(row=2,column=0,sticky=W)
+         buttonText = "New Condition"
+         if len(self.subConditions) > 0:
+            buttonText = str(self.subConditions[0])
+         else:
+            self.subConditions.append(Condition(self.pname,self.tname))
+         self.elements.append(Button(self.mainEditor, text=buttonText, command = lambda: self.editSubCondition(0)))
+         self.elements[-1].grid(row=2,column=1)
          pass
       elif value == "start":
-         pass
+         self.elements.append(Label(self.mainEditor, text="Start Playback At"))
+         self.elements[-1].grid(row=2,column=0,sticky=W)
+         self.fields.append(StringVar())
+         timeEntry = Entry(self.mainEditor, textvariable=self.fields[0])
+         timeEntry.grid(row=2,column=1,sticky=W+E)
+         self.elements.append(opponentEntry)
+
+   def updateSubConditions (self):
+      self.subConditions = []
+      if self.condition.type() == "not":
+         self.subConditions.append(self.condition.condition)
+
+   def editSubCondition (self, index):
+      condition = self.subConditions[index]
+      try:
+         self.subConditions[index] = ConditionEditor(self.master,condition,condition.type() == Condition.null).condition
+      except Exception as e:
+         print(e)
+      self.changeConditionType(self.conditionType.get(), False)
 
 class SongRow:
    def __init__ (self, editor, clist):
       self.editor = editor
-      self.master = self.editor.master
+      self.master = self.editor.teamMenu
       self.clist = clist
       self.songName = StringVar()
       self.songNameEntry = Entry(self.master, textvariable = self.songName)
@@ -147,37 +262,65 @@ class SongRow:
       self.songNameEntry.insert(0,songname)
 
    def newCondition (self):
-      print("new condition!")
+      self.editCondition(len(self.clist))
 
    def editCondition (self, index):
-      if (index < 0 or index >= len(self.clist) ):
-         raise ValueError("Somehow editing nonexistent condition.")
-      result = ConditionEditor(self.master,index,self.clist).condition
-      try:
-         if result is not None:
-            self.clist[index] = result
-            print(self.clist)
-            self.editor.updateSongMenu(self.clist.pname)
-      except Exception as e:
-         print("error saving result:",e)
-
+      # check if condition is new
+      if index == len(self.clist):
+         condition = Condition(self.clist.pname, self.clist.tname)
+      # check if index is out of range
+      elif (index < 0 or index > len(self.clist) ):
+         raise KeyError("editCondition index must be <= length of condition list.")
+      else:
+         condition = self.clist[index]
+      # edit condition in its own window
+      result = ConditionEditor(self.master,condition,index == len(self.clist)).condition
+      if result is not None:
+         if result == -1:
+            self.clist.pop(index)
+         else:
+            if index == len(self.clist):
+               self.clist.append(result)
+            else:
+               self.clist[index] = result
+         self.editor.updateSongMenu(uiName(self.clist.pname))
 
 class Editor:
    def __init__ (self, master):
       # tkinter master window
       self.master = master
       # save/load
-      self.loadButton = Button(self.master, text="Load .4ccm", command=self.load4ccm)
-      self.loadButton.grid(row = 0, column = 0,sticky=E+W)
-      self.saveButton = Button(self.master, text="Save .4ccm", command=self.save4ccm)
-      self.saveButton.grid(row = 0, column = 1,sticky=E+W)
-      self.saveAsButton = Button(self.master, text="Save .4ccm As...", command=self.save4ccmas)
-      self.saveAsButton.grid(row = 0, column = 2,sticky=E+W)
+      self.menuButtons = self.buildFileMenu()
+      self.menuButtons.pack()
       # file name of the .4ccm
       self.filename = None
+      # team editor portion
+      self.teamMenu = self.buildTeamEditor()
+      self.teamMenu.pack()
+
+      self.updatePlayerMenu()
+
+   def buildFileMenu (self):
+      """
+         Constructs the file save/load menu buttons and returns a tk frame containing them.
+      """
+      buttons = Frame(self.master)
+      self.loadButton = Button(buttons, text="Load .4ccm", command=self.load4ccm)
+      self.loadButton.pack(side=LEFT)
+      self.saveButton = Button(buttons, text="Save .4ccm", command=self.save4ccm)
+      self.saveButton.pack(side=LEFT)
+      self.saveAsButton = Button(buttons, text="Save .4ccm As...", command=self.save4ccmas)
+      self.saveAsButton.pack(side=LEFT)
+      return buttons
+
+   def buildTeamEditor(self):
+      """
+         Constructs the team editing menu and returns a tk frame containing it.
+      """
+      frame = Frame(self.master)
       # team name
-      Label(self.master, text="Team:", font="-weight bold").grid(row=1,column=0,sticky=W)
-      self.teamEntry = Entry(self.master)
+      Label(frame, text="Team:", font="-weight bold").grid(row=1,column=0,sticky=W)
+      self.teamEntry = Entry(frame)
       self.teamEntry.grid(row=1,column=1)
       # dict mapping players to lists of ConditionList objects
       self.players = {"Anthem" : [], "Goalhorn" : [], "Victory Anthem" : []}
@@ -185,28 +328,27 @@ class Editor:
       plist.sort()
       # player dropdown menu
       ## label
-      Label(self.master, text="Player:", font="-weight bold").grid(row=2,column = 0,sticky=W)
+      Label(frame, text="Player:", font="-weight bold").grid(row=2,column = 0,sticky=W)
       ## player variable
-      self.player = StringVar(self.master)
+      self.player = StringVar()
       self.player.set("Anthem")
       ## actual optionmenu
-      self.playerMenu = OptionMenu(self.master, self.player, *plist, command=self.updateSongMenu)
+      self.playerMenu = OptionMenu(frame, self.player, *plist, command=self.updateSongMenu)
       setMaxWidth(plist,self.playerMenu)
       self.playerMenu.grid(row = 2, column = 1)
       ## adding new players
-      self.playerEntry = Entry(self.master)
+      self.playerEntry = Entry(frame)
       self.playerEntry.grid(row = 2,column = 2)
-      self.playerButton = Button(self.master, text="Add Player", command=self.newplayer)
+      self.playerButton = Button(frame, text="Add Player", command=self.newplayer)
       self.playerButton.grid(row = 2, column = 3)
       # song listing menu
       self.songMenu = []
       ## headings
-      Label(self.master, text="Song Location").grid(row=3,column=0,columnspan=2)
-      Label(self.master, text="Conditions").grid(row=3,column=2,columnspan=2)
+      Label(frame, text="Song Location").grid(row=3,column=0,columnspan=2)
+      Label(frame, text="Conditions").grid(row=3,column=2,columnspan=2)
       ## new song buton
-      self.newSongButton = Button(self.master, text="New Song", command=self.newSong)
-
-      self.updatePlayerMenu()
+      self.newSongButton = Button(frame, text="New Song", command=self.newSong)
+      return frame
 
    def load4ccm (self):
       self.filename = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
@@ -215,6 +357,7 @@ class Editor:
 
       self.teamEntry.delete(0,END)
       self.teamEntry.insert(0,teamName)
+      self.player.set("Anthem")
       self.updatePlayerMenu()
 
    def save4ccm (self):
@@ -232,7 +375,7 @@ class Editor:
          self.playerMenu.grid_forget()
       plist = list(self.players.keys())
       plist.sort()
-      self.playerMenu = OptionMenu(self.master, self.player,*plist, command=self.updateSongMenu)
+      self.playerMenu = OptionMenu(self.teamMenu, self.player,*plist, command=self.updateSongMenu)
       setMaxWidth(plist,self.playerMenu)
       self.playerMenu.grid(row = 2, column = 1)
       self.updateSongMenu("Anthem")
@@ -258,22 +401,30 @@ class Editor:
       self.newSongButton.grid(row = row, column = 0)
 
    def writefile (self,filename):
+      if self.teamEntry.get() == "":
+         messagebox.showwarning("Error","Team name cannot be empty.")
+         return None
+      outConvert(self.players)
       with open(filename, 'w') as outfile:
          print("name;{}".format(self.teamEntry.get()), file=outfile)
-         outConvert(self.players)
+         # if no victory anthems provided, copy normal anthem
+         if "victory" not in self.players or len(self.players["victory"]) == 0:
+            self.players["victory"] = self.players["anthem"]
          for key in self.players.keys():
             if len(self.players[key]) > 0:
                print("Writing songs for key {}".format(key))
                for conditions in self.players[key]:
                   print("{};{}".format(key,conditions), file=outfile)
+      uiConvert(self.players)
 
    def newplayer (self):
       name = self.playerEntry.get()
       if name in self.players:
-         messagebox.showinfo("Error","Player {} already exists.".format(name))
+         messagebox.showwarning("Error","Player {} already exists.".format(name))
          return
       else:
          self.players[name] = []
+         print("Adding player {}.".format(name))
          self.updatePlayerMenu()
 
 
@@ -283,7 +434,6 @@ def main ():
    sys.stderr = sys.stdout
    # tkinter master window
    master = Tk()
-   master.minsize(640,480)
    # construct editor object in window
    dj = Editor(master)
    # run
