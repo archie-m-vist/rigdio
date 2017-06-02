@@ -270,25 +270,35 @@ class ConditionPlayer (ConditionList):
       ConditionList.__init__(self,pname,tname,data,songname)
       self.song = song
       self.isGoalhorn = goalhorn
+      self.fade = None
       for instruction in self.instructions:
          instruction.run(self)
 
    def play (self):
+      if self.fade is not None:
+         print("Song played quickly after pause, cancelling fade.")
+         thread = self.fade
+         self.fade = None
+         thread.join()
       self.song.play()
 
    def pause (self):
       if self.isGoalhorn:
-         fade = threading.Thread(target=fadeOut,args=(self.song,))
-         fade.start()
+         print("Fading out {}.".format(self.songname))
+         self.fade = threading.Thread(target=fadeOut,args=(self,))
+         self.fade.start()
       else:
+         print("Pausing {}.".format(self.songname))
          self.song.pause()
    
 
-def fadeOut (song):
+def fadeOut (player):
    i = 100
    while i > 0:
-      song.audio_set_volume(i)
+      if player.fade == None:
+         break
+      player.song.audio_set_volume(i)
       sleep(fadeTime/100)
       i -= 1
-   song.pause()
-   song.audio_set_volume(100)
+   player.song.pause()
+   player.song.audio_set_volume(100)
