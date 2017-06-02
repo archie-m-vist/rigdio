@@ -1,5 +1,5 @@
 import sys
-from os.path import isfile
+from os.path import isfile, join, abspath
 
 from tkinter import *
 import tkinter.filedialog as filedialog
@@ -8,6 +8,7 @@ import tkinter.messagebox as messagebox
 from rigparse import parse
 from gamestate import GameState
 from songgui import *
+from version import rigdio_version as version
 
 import logger
 
@@ -81,8 +82,24 @@ class Rigdio (Frame):
       else:
          messagebox.showerror("Error","File {} not found.".format(f))
 
+def resource_path(relative_path):
+   """ Get absolute path to resource, works for dev and for PyInstaller """
+   try:
+      # PyInstaller creates a temp folder and stores path in _MEIPASS
+      base_path = sys._MEIPASS
+   except Exception:
+      base_path = abspath(".")
+   return join(base_path, relative_path)
+
 def main ():
    master = Tk()
+   try:
+      datafile = resource_path("rigdio.ico")
+      master.iconbitmap(default=datafile)
+   except:
+      pass
+   master.title("rigdio {}".format(version))
+
    rigdio = Rigdio(master)
    rigdio.pack()
    try:

@@ -165,11 +165,11 @@ class StartInstruction (Instruction):
       self.startTime = 1000*int(timeToSeconds(timestring))
 
    def run (self, player):
-      player.song.set_time(self.startTime)
-      return True
+      player.startTime = self.startTime
 
    def __str__(self):
       return "start {}".format(self.rawTime)
+   __repr__ = __str__
 
 conditions = {
    "goals" : GoalCondition,
@@ -262,8 +262,11 @@ class ConditionPlayer (ConditionList):
       self.song = song
       self.isGoalhorn = goalhorn
       self.fade = None
+      self.startTime = None
       for instruction in self.instructions:
+         print(instruction)
          instruction.run(self)
+         print(self.song.get_time())
 
    def play (self):
       if self.fade is not None:
@@ -272,6 +275,10 @@ class ConditionPlayer (ConditionList):
          self.fade = None
          thread.join()
       self.song.play()
+      # StartInstruction necessary code
+      if self.startTime is not None:
+         self.song.set_time(self.startTime)
+         self.startTime = None
 
    def pause (self):
       if self.isGoalhorn:
