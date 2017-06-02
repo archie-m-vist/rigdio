@@ -66,10 +66,10 @@ class ConditionEditor (Dialog):
       frame = Frame(self.bodyFrame)
       selectorFrame = Frame(frame)
       Label(selectorFrame, text="Condition Type", font="-weight bold").pack(side=LEFT)
-      conditions = list(conditions.keys())
-      conditions.sort()
-      selector = OptionMenu(selectorFrame, self.conditionType, *list(conditions.keys()), command=self.changeConditionType)
-      setMaxWidth(conditions,selector)
+      ctypes = list(conditions.keys())
+      ctypes.sort()
+      selector = OptionMenu(selectorFrame, self.conditionType, *ctypes, command=self.changeConditionType)
+      setMaxWidth(ctypes,selector)
       selector.pack(side=LEFT)
       selectorFrame.pack()
       # condition description
@@ -256,7 +256,7 @@ class SongRow:
    def editCondition (self, index):
       # check if condition is new
       if index == len(self.clist):
-         condition = Condition(self.clist.pname, self.clist.tname)
+         condition = Condition(self.clist.pname, self.clist.tname, True)
       # check if index is out of range
       elif (index < 0 or index > len(self.clist) ):
          raise KeyError("editCondition index must be <= length of condition list.")

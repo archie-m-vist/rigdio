@@ -10,7 +10,7 @@ reserved = set(['anthem', 'victory', 'goal', 'name'])
 def loadsong(filename, vanthem = False):
    print("Attempting to load "+filename)
    filename = abspath(filename)
-   if not ( isfile(filename) ):
+   if not ( isfile(filename) ):  
       raise Exception(filename+" not found.")
    source = vlc.MediaPlayer("file:///"+filename)
    if not vanthem:
@@ -53,7 +53,7 @@ def parse (filename, load = True, home = True):
       if load:
          clist = ConditionPlayer(data[0], tname, data[2:], filename, home, loadsong(filename,player=='victory'), (player != "anthem" and player != "victory"))
       else:
-         clist = ConditionList(data[0], tname, data[2:], filename)
+         clist = ConditionList(data[0], tname, data[2:], filename, home)
       output[player].append(clist)
    
    # copy default goalhorn onto the end of all player goalhorns

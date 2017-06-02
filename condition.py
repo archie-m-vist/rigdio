@@ -9,7 +9,7 @@ fadeTime = 3
 class Condition:
    null = "nullCond"
 
-   def __init__(self, pname, tname, home):
+   def __init__(self, pname, tname, home = True):
       self.pname = pname
       self.tname = tname
       self.home = home
@@ -70,7 +70,7 @@ class GoalCondition (Condition):
 class NotCondition (Condition):
    desc = """Plays when the given condition is false."""
 
-   def __init__(self, pname, tname, tokens = [], condition = None, home = True):
+   def __init__(self, pname, tname, tokens = [], home = True, condition = None):
       Condition.__init__(self,pname,tname,home)
       if condition is None:
          self.condition = ConditionList.buildCondition(pname,tname,tokens,home)
@@ -116,6 +116,9 @@ class OpponentCondition (Condition):
 class FirstCondition (Condition):
    desc = """Plays if this is the first goal that the team has scored in this match."""
    
+   def __init__ (self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
+
    def check (self, gamestate):
       return gamestate.team_score(self.home) == 1
 
@@ -184,10 +187,10 @@ class ConditionList:
       try:
          return conditions[tokens[0].lower()](pname,tname,tokens[1:],home)
       except KeyError:
-         print ("Error: condition/instruction {} not recognised.")
+         print ("Error: condition/instruction {} not recognised.".format(tokens[0]))
          return None
 
-   def __init__(self, pname, tname, data, songname, home):
+   def __init__(self, pname, tname, data, songname, home = True):
       self.pname = pname
       self.tname = tname
       self.songname = songname
@@ -196,7 +199,7 @@ class ConditionList:
       self.startTime = 0
       for token in data:
          tokens = token.split()
-         condition = ConditionList.buildCondition(pname, tname, tokens,home)
+         condition = ConditionList.buildCondition(pname, tname, tokens, home)
          if condition.isInstruction():
             self.instructions.append(condition)
          else:
