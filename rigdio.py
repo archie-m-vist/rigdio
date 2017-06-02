@@ -10,7 +10,10 @@ from gamestate import GameState
 from songgui import *
 from version import rigdio_version as version
 
-import logger
+from logger import startLog
+if __name__ == '__main__':
+   startLog("rigdio.log")
+   print("rigdio {}".format(version))
 
 class ScoreWidget (Frame):
    def __init__ (self, master, game):

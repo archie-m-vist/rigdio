@@ -2,7 +2,7 @@
 import sys
 
 class Logger(object):
-   def __init__(self, filename = "rigdio.log"):
+   def __init__(self, filename):
       self.terminal = sys.stdout
       self.log = open(filename, "w")
 
@@ -18,5 +18,6 @@ class Logger(object):
       self.terminal.flush()
       self.log.flush()
 
-sys.stdout = Logger()
-sys.stderr = sys.stdout
+def startLog (filename):
+   sys.stdout = Logger(filename)
+   sys.stderr = sys.stdout

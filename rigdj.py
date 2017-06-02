@@ -5,9 +5,13 @@ from tkinter.simpledialog import Dialog
 import tkinter.font
 from condition import *
 from rigparse import parse
-
-from logger import Logger
 from rigdj_util import *
+from version import rigdj_version as version
+
+from logger import startLog
+if __name__ == '__main__':
+   startLog("rigdj.log")
+   print("rigDJ {}".format(version))
 
 # row usage
 #  0 - load/save/save as
@@ -418,11 +422,9 @@ class Editor:
 
 
 def main ():
-   # set up logging
-   sys.stdout = Logger("rigdj.log")
-   sys.stderr = sys.stdout
    # tkinter master window
    master = Tk()
+   master.title("rigDJ {}".format(version))
    # construct editor object in window
    dj = Editor(master)
    # run
