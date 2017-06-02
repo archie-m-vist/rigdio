@@ -9,10 +9,10 @@ fadeTime = 3
 class Condition:
    null = "nullCond"
 
-   def __init__(self, pname, tname):
+   def __init__(self, pname, tname, home):
       self.pname = pname
       self.tname = tname
-      self.home = None
+      self.home = home
 
    def __str__(self):
       return Condition.null
@@ -50,8 +50,8 @@ class Condition:
 class GoalCondition (Condition):
    desc = """Plays when the number of goals this player has scored meet the condition."""
 
-   def __init__(self, pname, tname, tokens):
-      Condition.__init__(self,pname,tname)
+   def __init__(self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
       operators = ["<", ">", "<=", ">=", "=="]
       if tokens[0] == "=":
          tokens[0] = "=="
@@ -64,16 +64,16 @@ class GoalCondition (Condition):
    __repr__ = __str__
 
    def check(self, gamestate):
-      goals = gamestate.player_goals(self.pname)
+      goals = gamestate.player_goals(self.pname,self.home)
       return eval(str(goals)+self.comparison)
 
 class NotCondition (Condition):
    desc = """Plays when the given condition is false."""
 
-   def __init__(self, pname, tname, tokens = [], condition = None):
-      Condition.__init__(self,pname,tname)
+   def __init__(self, pname, tname, tokens = [], condition = None, home = True):
+      Condition.__init__(self,pname,tname,home)
       if condition is None:
-         self.condition = ConditionList.buildCondition(pname,tname,tokens)
+         self.condition = ConditionList.buildCondition(pname,tname,tokens,home)
       else:
          self.condition = condition
 
@@ -89,12 +89,10 @@ class NotCondition (Condition):
 class ComebackCondition (Condition):
    desc = """Plays when the team was behind prior to this goal being scored."""
 
-   def __init__(self, pname, tname, tokens):
-      Condition.__init__(self,pname,tname)
+   def __init__(self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
 
    def check(self,gamestate):
-      if self.home == None:
-         self.home = (gamestate.home_name == self.tname)
       return gamestate.team_score(self.home) <= gamestate.opponent_score(self.home) and gamestate.opponent_score(self.home) > 0
 
    def __str__(self):
@@ -104,13 +102,11 @@ class ComebackCondition (Condition):
 class OpponentCondition (Condition):
    desc = """Plays when the opponent is one of the listed teams (separated by spaces, exclude slashes from ends)."""
 
-   def __init__(self,pname,tname,tokens):
-      Condition.__init__(self,pname,tname)
+   def __init__(self,pname,tname,tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
       self.others = [x.lower() for x in tokens]
 
    def check(self,gamestate):
-      if self.home == None:
-         self.home = (gamestate.home_name == self.tname)
       return gamestate.opponent_name(self.home) in self.others
 
    def __str__(self):
@@ -119,13 +115,8 @@ class OpponentCondition (Condition):
 
 class FirstCondition (Condition):
    desc = """Plays if this is the first goal that the team has scored in this match."""
-
-   def __init__(self, pname, tname,tokens):
-      Condition.__init__(self,pname,tname)
    
    def check (self, gamestate):
-      if self.home == None:
-         self.home = gamestate.is_home(self.tname)
       return gamestate.team_score(self.home) == 1
 
    def __str__(self):
@@ -165,7 +156,8 @@ class Instruction:
 class StartInstruction (Instruction):
    desc = """Starts the file at the given time (in min:sec format)."""
 
-   def __init__ (self, timestring):
+   def __init__ (self, pname, tname, tokens, home = True):
+      timestring = tokens[0]
       self.rawTime = timestring
       self.startTime = 1000*int(timeToSeconds(timestring))
 
@@ -176,30 +168,26 @@ class StartInstruction (Instruction):
    def __str__(self):
       return "start {}".format(self.rawTime)
 
-class ConditionList (Condition):
-   def buildCondition(pname, tname, tokens):
+conditions = {
+   "goals" : GoalCondition,
+   "comeback" : ComebackCondition,
+   "first" : FirstCondition,
+   "opponent" : OpponentCondition,
+   "not" : NotCondition,
+   "start" : StartInstruction
+}
+
+class ConditionList:
+   def buildCondition(pname, tname, tokens, home = True):
       if len(tokens) == 0:
          return None
-      elif ( tokens[0].lower() == "goals" ):
-         return GoalCondition(pname,tname,tokens[1:])
-      elif ( tokens[0].lower() == "not" ):
-         try:
-            return NotCondition(pname,tname,tokens[1:])
-         except ValueError:
-            print("Bad condition type as NotCondition argument: {}".format(tokens[1]))
-            return None
-      elif ( tokens[0].lower() == "comeback" ):
-         return ComebackCondition(pname,tname)
-      elif ( tokens[0].lower() == "opponent" ):
-         return OpponentCondition(pname,tname,tokens[1:])
-      elif ( tokens[0].lower() == "first" ):
-         return FirstCondition(pname,tname)
-      # instructions
-      elif ( tokens[0].lower() == "start" ):
-         return StartInstruction(tokens[1])
-      return None
+      try:
+         return conditions[tokens[0].lower()](pname,tname,tokens[1:],home)
+      except KeyError:
+         print ("Error: condition/instruction {} not recognised.")
+         return None
 
-   def __init__(self, pname, tname, data, songname):
+   def __init__(self, pname, tname, data, songname, home):
       self.pname = pname
       self.tname = tname
       self.songname = songname
@@ -208,7 +196,7 @@ class ConditionList (Condition):
       self.startTime = 0
       for token in data:
          tokens = token.split()
-         condition = ConditionList.buildCondition(pname, tname, tokens)
+         condition = ConditionList.buildCondition(pname, tname, tokens,home)
          if condition.isInstruction():
             self.instructions.append(condition)
          else:
@@ -266,8 +254,8 @@ class ConditionList (Condition):
       return True
 
 class ConditionPlayer (ConditionList):
-   def __init__ (self, pname, tname, data, songname, song, goalhorn = True):
-      ConditionList.__init__(self,pname,tname,data,songname)
+   def __init__ (self, pname, tname, data, songname, home, song, goalhorn = True):
+      ConditionList.__init__(self,pname,tname,data,songname,home)
       self.song = song
       self.isGoalhorn = goalhorn
       self.fade = None

@@ -1,245 +1,94 @@
 import sys
 from os.path import isfile
 
-from tkinter import filedialog, Tk
-
-import pyglet
-from pyglet_gui.theme import Theme
-from pyglet_gui.gui import Label
-from pyglet_gui.manager import Manager
-from pyglet_gui.buttons import Button, OneTimeButton
-from pyglet_gui.containers import VerticalContainer
+from tkinter import *
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
 
 from rigparse import parse
 from gamestate import GameState
+from songgui import *
 
 import logger
 
-window = pyglet.window.Window(640, 480, resizable=True, vsync=True)
-batch = pyglet.graphics.Batch()
+class ScoreWidget (Frame):
+   def __init__ (self, master, game):
+      Frame.__init__(self,master)
+      self.game = game
+      # home/away team name labels
+      self.homeName = StringVar()
+      self.awayName = StringVar()
+      self.updateLabels()
+      Label(self, textvariable=self.homeName, font="-weight bold").grid(row=0,column=0)
+      Label(self, text="vs.", font="-weight bold").grid(row=0,column=1)
+      Label(self, textvariable=self.awayName, font="-weight bold").grid(row=0,column=2)
+      # score tracker
+      self.homeScore = IntVar()
+      self.awayScore = IntVar()
+      self.updateScore()
+      Label(self, textvariable=self.homeScore).grid(row=1,column=0)
+      Label(self, text="-").grid(row=1,column=1)
+      Label(self, textvariable=self.awayScore).grid(row=1,column=2)
 
-root = Tk()
-root.withdraw()
+   def updateLabels (self):
+      self.homeName.set("/{}/".format(self.game.home_name))
+      self.awayName.set("/{}/".format(self.game.away_name))
 
-thome = Theme({"font": "Lucida Grande",
-               "font_size": 12,
-               "text_color": [211, 213, 215, 255],
-               "gui_color": [0, 0, 255, 255],
-               "button": {
-                  "down": {
-                     "image": {
-                        "source": "button-down.png",
-                        "frame": [8, 6, 2, 2],
-                        "padding": [18, 18, 8, 6]
-                     },
-                     "text_color": [0, 0, 0, 255]
-                  },
-                  "up": {
-                     "image": {
-                        "source": "button.png",
-                        "frame": [6, 5, 6, 3],
-                        "padding": [18, 18, 8, 6]
-                     }
-                  }
-               }},
-               resources_path='theme/')
-taway = Theme({"font": "Lucida Grande",
-               "font_size": 12,
-               "text_color": [211, 213, 215, 255],
-               "gui_color": [255, 0, 0, 255],
-               "button": {
-                  "down": {
-                     "image": {
-                        "source": "button-down.png",
-                        "frame": [8, 6, 2, 2],
-                        "padding": [18, 18, 8, 6]
-                     },
-                     "text_color": [0, 0, 0, 255]
-                  },
-                  "up": {
-                     "image": {
-                        "source": "button.png",
-                        "frame": [6, 5, 6, 3],
-                        "padding": [18, 18, 8, 6]
-                     }
-                  }
-               }},
-               resources_path='theme/')
-tsyst = Theme({"font": "Lucida Grande",
-               "font_size": 12,
-               "text_color": [211, 213, 215, 255],
-               "gui_color": [0, 255, 0, 255],
-               "button": {
-                  "down": {
-                     "image": {
-                        "source": "button-down.png",
-                        "frame": [8, 6, 2, 2],
-                        "padding": [18, 18, 8, 6]
-                     },
-                     "text_color": [0, 0, 0, 255]
-                  },
-                  "up": {
-                     "image": {
-                        "source": "button.png",
-                        "frame": [6, 5, 6, 3],
-                        "padding": [18, 18, 8, 6]
-                     }
-                  }
-               }},
-               resources_path='theme/')
+   def updateScore (self):
+      self.homeScore.set(self.game.home_score)
+      self.awayScore.set(self.game.away_score)
 
-@window.event
-def on_draw():
-   window.clear()
-   batch.draw()
+class Rigdio (Frame):
+   def __init__ (self, master):
+      Frame.__init__(self, master)
+      self.game = GameState()
+      self.home = None
+      self.away = None
+      # file menu
+      Button(self, text="Load Home Team", command=self.loadFile).grid(row=0, column=0)
+      Button(self, text="Load Away Team", command=lambda: self.loadFile(False)).grid(row=0, column=2)
+      # score widget
+      self.scoreWidget = ScoreWidget(self, self.game)
+      self.game.widget = self.scoreWidget
+      self.scoreWidget.grid(row=0, column=1)
 
-game = GameState()
-
-class PlayerButton (Button):
-   def __init__ (self, name, data, home):
-      Button.__init__(self,name,False,None)
-      self.conditions = data
-      self.song = None
-      self.name = name
-      self.home = home
-
-   def on_mouse_press (self, x, y, button, modifiers):
-      Button.on_mouse_press(self, x, y, button, modifiers)
-      if ( self.is_pressed ):
-         # update score
-         game.score(self.name, self.home)
-         # check conditions
-         for condition in self.conditions:
-            if ( condition.check(game) ):
-               self.song = condition
-               print("Playing",condition.songname)
-               self.song.play()
-               break
+   def loadFile (self, home = True):
+      f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
+      if isfile(f):
+         print("Loading music instructions from {}.".format(f))
+         tmusic, tname = parse(f)
+         # copy anthem to victory anthem if none given
+         if "victory" not in tmusic:
+            messagebox.showwarning("Warning","No victory anthem information in {}; victory anthem will need to be played manually.".format(f))
+         if tname is None:
+            messagebox.showwarning("Warning","No team name found in {}. Opponent-specific music may not function properly.".format(f))
+         if home:
+            self.game.home_name = tname
+            if self.home is not None:
+               self.home.grid_forget()
+            self.home = TeamMenu(self, tname, tmusic, True, self.game)
+            self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
+            self.scoreWidget.updateLabels()
+            self.game.clear()
+         else:
+            self.game.away_name = tname
+            if self.away is not None:
+               self.away.grid_forget()
+            self.away = TeamMenu(self, tname, tmusic, False, self.game)
+            self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
+            self.scoreWidget.updateLabels()
+            self.game.clear()
       else:
-         # pause song
-         if ( self.song is not None ):
-            self.song.pause()
-            self.song = None
-
-def open_home_file(is_pressed):
-   game.clear()
-   f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
-   if ( isfile(f) ):
-      print("Loading music from "+f)
-      home, game.home_name = parse(f)
-      if game.home_name is None:
-         game.home_name = "HOME"
-
-      # reset buttons
-      initHomeButtons()
-      
-      # get anthem and victory anthem
-      homeButtons.add(Label("Anthems"))
-      temp = home.pop('anthem', None)
-      if ( temp != None ):
-         for x in temp:
-            x.isGoalhorn = False
-         homeButtons.add(PlayerButton('Anthem',temp,True))
-      else:
-         print("ERROR: no anthem specified in "+f+".")
-      temp = home.pop('victory', None)
-      if ( temp != None ):
-         for x in temp:
-            x.isGoalhorn = False
-         homeButtons.add(PlayerButton('Victory Anthem',temp,True))
-
-      homeButtons.add(Label("Goalhorns"))
-      # get default goalhorn
-      temp = home.pop('goal', None)
-      defaultGoal = None
-      if ( temp != None ):
-         defaultGoal = PlayerButton('Other',temp,True)
-      else:
-         print("ERROR: no default goalhorn specified in "+f+".")
-
-      # iterate across player names
-      for name, data in home.items():
-         homeButtons.add(PlayerButton(name,data,True))
-
-      if ( defaultGoal != None ):
-         homeButtons.add(defaultGoal)
-
-def open_away_file(is_pressed):
-   game.clear()
-   f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
-   if ( isfile(f) ):
-      print("Loading music from "+f)
-      away, game.away_name = parse(f)
-      if game.away_name is None:
-         game.away_name = "AWAY"
-
-      # reset Manager
-      initAwayButtons()
-      
-      # get anthem and victory anthem
-      awayButtons.add(Label("Anthems"))
-      temp = away.pop('anthem', None)
-      if ( temp != None ):
-         for x in temp:
-            x.isGoalhorn = False
-         awayButtons.add(PlayerButton('Anthem',temp,False))
-      else:
-         print("ERROR: no anthem specified in "+f+".")
-      temp = away.pop('victory', None)
-      if ( temp != None ):
-         for x in temp:
-            x.isGoalhorn = False
-         awayButtons.add(PlayerButton('Victory Anthem',temp,False))
-
-
-      awayButtons.add(Label("Goalhorns"))
-      # get default goalhorn
-      temp = away.pop('goal', None)
-      defaultGoal = None
-      if ( temp != None ):
-         defaultGoal = PlayerButton('Other',temp,False)
-      else:
-         print("ERROR: no default goalhorn specified in "+f+".")
-
-      # iterate across player names
-      for name, data in away.items():
-         awayButtons.add(PlayerButton(name,data,False))
-
-      if ( defaultGoal != None ):
-         awayButtons.add(defaultGoal)
-
-homeButtons = None
-awayButtons = None
-homeManager = None
-awayManager = None
-
-# initialise home buttons, manager
-def initHomeButtons ():
-   button_home = OneTimeButton('Load Home Team Export', on_release=open_home_file)
-   global homeButtons
-   homeButtons = VerticalContainer([Label("Home Team"),button_home])
-   global homeManager
-   if ( homeManager != None ):
-      homeManager.delete()
-   homeManager = Manager(homeButtons,window=window,batch=batch,theme=thome,offset=(-150,70))
-
-# initialise away buttons, manager
-def initAwayButtons ():
-   button_away = OneTimeButton('Load Away Team Export', on_release=open_away_file)
-   global awayButtons
-   awayButtons = VerticalContainer([Label("Away Team"),button_away])
-   global awayManager
-   if ( awayManager != None ):
-      awayManager.delete()
-   awayManager = Manager(awayButtons,window=window,batch=batch,theme=taway,offset=(150,70))
+         messagebox.showerror("Error","File {} not found.".format(f))
 
 def main ():
-   initHomeButtons()
-   initAwayButtons()
+   master = Tk()
+   rigdio = Rigdio(master)
+   rigdio.pack()
    try:
-      pyglet.app.run()
-   except:
-      close(sys.stdout)
+      mainloop()
+   except KeyboardInterrupt:
+      return
 
 if __name__ == '__main__':
    main()

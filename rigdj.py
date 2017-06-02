@@ -17,17 +17,6 @@ from rigdj_util import *
 # 3+ - songs and conditions
 
 class ConditionEditor (Dialog):
-   def conditions ():
-      output = {
-         "goals" : GoalCondition,
-         "comeback" : ComebackCondition,
-         "first" : FirstCondition,
-         "opponent" : OpponentCondition,
-         "not" : NotCondition,
-         "start" : StartInstruction
-      }
-      return output
-
    def defaultTokens ():
       output = {
          "goals" : ["==",2],
@@ -77,9 +66,9 @@ class ConditionEditor (Dialog):
       frame = Frame(self.bodyFrame)
       selectorFrame = Frame(frame)
       Label(selectorFrame, text="Condition Type", font="-weight bold").pack(side=LEFT)
-      conditions = list(ConditionEditor.conditions().keys())
+      conditions = list(conditions.keys())
       conditions.sort()
-      selector = OptionMenu(selectorFrame, self.conditionType, *list(ConditionEditor.conditions().keys()), command=self.changeConditionType)
+      selector = OptionMenu(selectorFrame, self.conditionType, *list(conditions.keys()), command=self.changeConditionType)
       setMaxWidth(conditions,selector)
       selector.pack(side=LEFT)
       selectorFrame.pack()
@@ -117,7 +106,7 @@ class ConditionEditor (Dialog):
       if ctype == "not":
          self.condition = NotCondition(self.pname, self.tname, condition = self.subConditions[0])
       else:
-         self.condition = ConditionEditor.conditions()[ctype](self.pname, self.tname, self.tokens)
+         self.condition = conditions[ctype](self.pname, self.tname, self.tokens)
 
    def buttonbox(self):
         box = Frame(self)
@@ -150,7 +139,7 @@ class ConditionEditor (Dialog):
       if value == "":
          desc = "No condition type selected."
       else:
-         desc = ConditionEditor.conditions()[value].desc
+         desc = conditions[value].desc
       self.conditionDescLabel['text'] = desc
 
       # if no type selected, we're done

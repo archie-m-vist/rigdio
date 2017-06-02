@@ -1,21 +1,29 @@
 class GameState:
-   def __init__ (self):
+   def __init__ (self, widget = None):
       self.home_score = 0
       self.away_score = 0
       self.home_name = "HOME"
       self.away_name = "AWAY"
-      self.scorers = {}
+      self.home_scorers = {}
+      self.away_scorers = {}
+      self.widget = widget
 
    def score (self, pname, home):
-      if ( home == True ):
+      if home:
          self.home_score += 1
+         if pname in self.home_scorers:
+            self.home_scorers[pname] += 1
+         else:
+            self.home_scorers[pname] = 1
       else:
          self.away_score += 1
-
-      if pname in self.scorers:
-         self.scorers[pname] += 1
-      else:
-         self.scorers[pname] = 1
+         if pname in self.away_scorers:
+            self.away_scorers[pname] += 1
+         else:
+            self.away_scorers[pname] = 1
+      # update scoreboard
+      if self.widget is not None:
+         self.widget.updateScore()
 
    def is_home (self, tname):
       return (self.home_name == tname)
@@ -44,7 +52,7 @@ class GameState:
       else:
          return self.home_score
 
-   def player_goals (self, pname):
+   def player_goals (self, pname, home):
       if pname in self.scorers:
          return self.scorers[pname]
       else:
