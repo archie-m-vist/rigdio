@@ -252,6 +252,7 @@ class ConditionList:
 
    def check (self, gamestate):
       for condition in self.conditions:
+         print("Checking {}".format(condition))
          if not condition.check(gamestate):
             return False
       return True

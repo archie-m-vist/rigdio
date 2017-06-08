@@ -9,6 +9,7 @@ class GameState:
       self.widget = widget
 
    def score (self, pname, home):
+      print("Goal scored by {} on {} team.".format(pname, "home" if home else "away"))
       if home:
          self.home_score += 1
          if pname in self.home_scorers:
@@ -26,19 +27,14 @@ class GameState:
          self.widget.updateScore()
 
    def is_home (self, tname):
+      """Checks if a team is at home. WARNING: Breaks in mirror matches (always says true)."""
       return (self.home_name == tname)
 
    def team_name (self, home):
-      if home:
-         return self.home_name
-      else:
-         return self.away_name
+      return self.home_name if home else self.away_name
 
    def opponent_name (self, home):
-      if home:
-         return self.away_name
-      else:
-         return self.home_name
+      return self.away_name if home else self.home_name
 
    def team_score (self, home):
       if home:
@@ -53,8 +49,9 @@ class GameState:
          return self.home_score
 
    def player_goals (self, pname, home):
-      if pname in self.scorers:
-         return self.scorers[pname]
+      scorers = self.home_scorers if home else self.away_scorers
+      if pname in scorers:
+         return scorers[pname]
       else:
          return 0
 
