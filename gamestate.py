@@ -7,6 +7,7 @@ class GameState:
       self.home_scorers = {}
       self.away_scorers = {}
       self.widget = widget
+      self.gametype = "standard"
 
    def score (self, pname, home):
       print("Goal scored by {} on {} team.".format(pname, "home" if home else "away"))
