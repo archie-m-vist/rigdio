@@ -16,7 +16,7 @@ class PlayerButtons (Frame):
       # text and buttons
       ## check if text is none (i.e., it's a reserved keyword with an overridden name)
       if self.text is None:
-         self.text = "\n".join(self.pname.split(","))
+         self.text = "\n".join([x.lstrip() for x in self.pname.split(",")])
          self.reserved = False
       else:
          self.reserved = True
