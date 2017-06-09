@@ -55,6 +55,20 @@ class Rigdio (Frame):
       self.scoreWidget = ScoreWidget(self, self.game)
       self.game.widget = self.scoreWidget
       self.scoreWidget.grid(row=0, column=1)
+      # game type selector
+      self.initGameTypeMenu().grid(row=1,column=1)
+
+   def initGameTypeMenu (self):
+      gameTypeMenu = Frame(self)
+      gametypes = ["Standard", "Knockouts", "Final"]
+      Label(gameTypeMenu, text="Match Type").pack()
+      gametype = StringVar()
+      gametype.set("Standard")
+      OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType).pack()
+      return gameTypeMenu
+
+   def changeGameType (self, option):
+      self.game.gametype = option.lower()
 
    def loadFile (self, home = True):
       f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))

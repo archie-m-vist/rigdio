@@ -126,7 +126,7 @@ class FirstCondition (Condition):
    def __init__ (self, pname, tname, tokens, home = True):
       Condition.__init__(self,pname,tname,home)
 
-   def check (self, gamestate):
+   def check(self, gamestate):
       return gamestate.team_score(self.home) == 1
 
    def __str__(self):
@@ -145,6 +145,20 @@ class LeadCondition (GoalCondition):
 
    def __str__(self):
       return self.comparison.format("lead")
+   __repr__ = __str__
+
+class MatchCondition (Condition):
+   desc = """Plays if the match is the corresponding type (standard, knockouts, final)."""
+
+   def __init__ (self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
+      self.type = tokens[0].lower()
+
+   def check (self, gamestate):
+      return gamestate.gametype == self.type
+
+   def __str__(self):
+      return "match {}".format(self.type)
    __repr__ = __str__
 
 class Instruction:
@@ -199,18 +213,18 @@ conditions = {
    "opponent" : OpponentCondition,
    "not" : NotCondition,
    "lead" : LeadCondition,
+   "match" : MatchCondition,
    "start" : StartInstruction
 }
 
 class ConditionList:
    def buildCondition(pname, tname, tokens, home = True):
       if len(tokens) == 0:
-         return None
+         raise ValueError("Cannot build condition without tokens.")
       try:
          return conditions[tokens[0].lower()](pname,tname,tokens[1:],home)
       except KeyError:
-         print ("Error: condition/instruction {} not recognised.".format(tokens[0]))
-         return None
+         raise ValueError("condition/instruction {} not recognised.".format(tokens[0]))
 
    def __init__(self, pname, tname, data, songname, home = True):
       self.pname = pname
