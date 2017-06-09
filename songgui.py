@@ -36,7 +36,7 @@ class PlayerButtons (Frame):
                self.song.play()
                self.playButton.configure(relief=SUNKEN)
                return
-         messagebox.showwarning("No Song Found", "No song for player {} matches current game sstate; no music will play.".format(self.pname))
+         messagebox.showwarning("No Song Found", "No song for player {} matches current game state; no music will play.".format(self.pname))
       else:
          self.song.pause()
          self.playButton.configure(relief=RAISED)
