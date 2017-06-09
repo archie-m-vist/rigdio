@@ -60,7 +60,7 @@ class Rigdio (Frame):
       f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
       if isfile(f):
          print("Loading music instructions from {}.".format(f))
-         tmusic, tname = parse(f)
+         tmusic, tname = parse(f,home=home)
          # copy anthem to victory anthem if none given
          if "victory" not in tmusic:
             messagebox.showwarning("Warning","No victory anthem information in {}; victory anthem will need to be played manually.".format(f))
@@ -72,16 +72,15 @@ class Rigdio (Frame):
                self.home.grid_forget()
             self.home = TeamMenu(self, tname, tmusic, True, self.game)
             self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
-            self.scoreWidget.updateLabels()
-            self.game.clear()
          else:
             self.game.away_name = tname
             if self.away is not None:
                self.away.grid_forget()
             self.away = TeamMenu(self, tname, tmusic, False, self.game)
             self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
-            self.scoreWidget.updateLabels()
-            self.game.clear()
+         self.scoreWidget.updateLabels()
+         self.game.clear()
+         self.scoreWidget.updateScore()
       else:
          messagebox.showerror("Error","File {} not found.".format(f))
 
