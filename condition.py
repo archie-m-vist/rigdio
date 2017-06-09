@@ -1,7 +1,9 @@
 import threading
 from time import sleep
-from os.path import basename
+from os.path import basename, abspath, isfile
+import vlc
 
+from rigdio_except import UnloadSong
 from rigdio_util import timeToSeconds
 
 fadeTime = 3
@@ -147,17 +149,19 @@ class LeadCondition (GoalCondition):
    __repr__ = __str__
 
 class MatchCondition (Condition):
-   desc = """Plays if the match is the corresponding type (standard, knockouts, final)."""
+   desc = """Plays if the match any of the given types (group, knockouts, ro16, qfinal, sfinal, final)."""
 
    def __init__ (self, pname, tname, tokens, home = True):
       Condition.__init__(self,pname,tname,home)
-      self.type = tokens[0].lower()
+      if len(tokens) == 1 and tokens[0].lower() == "knockouts":
+         tokens = ["ro16", "quarterfinal", "semifinal", "final"]
+      self.types = set(tokens)
 
    def check (self, gamestate):
-      return gamestate.gametype == self.type
+      return gamestate.gametype in self.types
 
    def __str__(self):
-      return "match {}".format(self.type)
+      return "match {}".format(" ".join(list(self.types)))
    __repr__ = __str__
 
 class HomeCondition (Condition):
@@ -172,6 +176,19 @@ class HomeCondition (Condition):
    def __str__(self):
       return "home"
    __repr__ = __str__
+
+class OnceCondition (Condition):
+   desc = """Plays this song exactly once."""
+
+   def __init__(self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
+      self.okay = True
+
+   def check (self, gamestate):
+      if self.okay:
+         self.okay = False
+         return True
+      raise UnloadSong
 
 class Instruction:
    """
@@ -220,11 +237,11 @@ class StartInstruction (Instruction):
 
 class PauseInstruction (Instruction):
    desc = """Specify action taken when goalhorn is paused."""
+   types = ["continue", "restart"]
 
    def __init__ (self, pname, tname, tokens, home = True):
-      types = ["continue", "restart"]
-      if tokens[0] not in types:
-         raise ValueError("Unrecognised pause type (allowed values: {}).".format(", ".join(types)))
+      if tokens[0] not in PauseInstruction.types:
+         raise ValueError("Unrecognised pause type (allowed values: {}).".format(", ".join(PauseInstruction.types)))
       self.type = tokens[0]
 
    def run (self, player):
@@ -232,6 +249,24 @@ class PauseInstruction (Instruction):
 
    def __str__(self):
       return "pause {}".format(self.type)
+   __repr__ = __str__
+
+class EndInstruction (Instruction):
+   desc = """Specify action taken when goalhorn reaches the end."""
+   types = ["loop", "stop"]
+
+   def __init__ (self, pname, tname, tokens, home = True):
+      if tokens[0] not in EndInstruction.types:
+         raise ValueError("Unrecognised end type (allowed values: {}).".format(", ".join(EndInstruction.types)))
+      self.type = tokens[0]
+
+   def run (self, player):
+      player.endType = self.type
+      if self.type == "stop":
+         player.song.get_media().add_options("input-repeat=0")
+
+   def __str__(self):
+      return "end {}".format(self.type)
    __repr__ = __str__
 
 conditions = {
@@ -243,8 +278,10 @@ conditions = {
    "lead" : LeadCondition,
    "match" : MatchCondition,
    "home" : HomeCondition,
+   "once" : OnceCondition,
    "start" : StartInstruction,
-   "pause" : PauseInstruction
+   "pause" : PauseInstruction,
+   "end" : EndInstruction
 }
 
 class ConditionList:
@@ -262,7 +299,9 @@ class ConditionList:
       self.songname = songname
       self.conditions = []
       self.instructions = []
+      self.disabled = False
       self.startTime = 0
+      self.endType = "loop"
       self.pauseType = "continue"
       for token in data:
          tokens = token.split()
@@ -273,13 +312,6 @@ class ConditionList:
             self.conditions.append(condition)
       self.all = self.conditions + self.instructions
 
-   def append (self, item):
-      self.all.append(item)
-      if item.isInstruction():
-         self.instructions.append(item)
-      else:
-         self.conditions.append(item)
-   
    def __str__(self):
       output = "{}".format(basename(self.songname))
       for condition in self.conditions:
@@ -309,6 +341,16 @@ class ConditionList:
       # insert new value where it was
       self.all[key] = value
 
+   def append (self, item):
+      self.all.append(item)
+      if item.isInstruction():
+         self.instructions.append(item)
+      else:
+         self.conditions.append(item)
+
+   def disable (self):
+      self.disabled = True
+
    def pop (self, index = 0):
       item = self.all.pop(index)
       if item.isInstruction():
@@ -318,11 +360,23 @@ class ConditionList:
       return item
 
    def check (self, gamestate):
+      if self.disabled:
+         raise UnloadSong
       for condition in self.conditions:
          print("Checking {}".format(condition))
          if not condition.check(gamestate):
             return False
       return True
+
+def loadsong(filename, vanthem = False):
+   print("Attempting to load "+filename)
+   filename = abspath(filename)
+   if not ( isfile(filename) ):  
+      raise Exception(filename+" not found.")
+   source = vlc.MediaPlayer("file:///"+filename)
+   if not vanthem:
+      source.get_media().add_options("input-repeat=-1")
+   return source
 
 class ConditionPlayer (ConditionList):
    def __init__ (self, pname, tname, data, songname, home, song, goalhorn = True):
@@ -332,9 +386,16 @@ class ConditionPlayer (ConditionList):
       self.fade = None
       self.startTime = 0
       self.pauseType = "continue"
+      self.instruct()
+   
+   def instruct (self):
       for instruction in self.instructions:
          print(instruction)
          instruction.run(self)
+
+   def reloadSong (self):
+      self.song = loadsong(self.songname, self.pname == "victory")
+      self.instruct()
 
    def play (self):
       if self.fade is not None:
@@ -342,12 +403,14 @@ class ConditionPlayer (ConditionList):
          thread = self.fade
          self.fade = None
          thread.join()
+         
       self.song.play()
+
       # StartInstruction necessary code
-      if self.startTime is not 0:
+      if self.startTime is not None:
          self.song.set_time(self.startTime)
-         if self.pauseType != "restart":
-            self.startTime = 0
+         if self.pauseType != "restart" and self.endType != "stop":
+            self.startTime = None
 
    def pause (self):
       if self.isGoalhorn:
@@ -359,7 +422,12 @@ class ConditionPlayer (ConditionList):
          if self.pauseType == "restart":
             self.song.set_time(self.startTime)
          self.song.pause()
-   
+         if self.song.get_media().get_state() == vlc.State.Ended:
+            self.reloadSong()
+
+   def disable (self):
+      self.song.stop()
+      ConditionList.disable(self)
 
 def fadeOut (player):
    i = 100
@@ -372,4 +440,6 @@ def fadeOut (player):
    if player.pauseType == "restart":
       player.song.set_time(player.startTime)
    player.song.pause()
+   if player.song.get_media().get_state() == vlc.State.Ended:
+      player.reloadSong()
    player.song.audio_set_volume(100)
