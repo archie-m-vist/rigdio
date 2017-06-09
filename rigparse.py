@@ -1,21 +1,11 @@
 import os
 import vlc
 
-from os.path import abspath, isfile, basename, splitext
-from condition import ConditionList, ConditionPlayer
+from os.path import basename, splitext
+from condition import ConditionList, ConditionPlayer, loadsong
 
 # reserved names
 reserved = set(['anthem', 'victory', 'goal', 'name'])
-
-def loadsong(filename, vanthem = False):
-   print("Attempting to load "+filename)
-   filename = abspath(filename)
-   if not ( isfile(filename) ):  
-      raise Exception(filename+" not found.")
-   source = vlc.MediaPlayer("file:///"+filename)
-   if not vanthem:
-      source.get_media().add_options("input-repeat=-1")
-   return source
 
 """Parses a music export file and loads it into memory."""
 def parse (filename, load = True, home = True):

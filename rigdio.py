@@ -60,10 +60,10 @@ class Rigdio (Frame):
 
    def initGameTypeMenu (self):
       gameTypeMenu = Frame(self)
-      gametypes = ["Standard", "Knockouts", "Final"]
+      gametypes = ["Group", "RO16", "Quarterfinal", "Semifinal", "Final"]
       Label(gameTypeMenu, text="Match Type").pack()
       gametype = StringVar()
-      gametype.set("Standard")
+      gametype.set("Group")
       OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType).pack()
       return gameTypeMenu
 

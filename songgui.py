@@ -1,6 +1,7 @@
 from tkinter import *
 import tkinter.messagebox as messagebox
 from rigparse import reserved
+from rigdio_except import UnloadSong
 
 class PlayerButtons (Frame):
    def __init__ (self, master, clists, home, game, text = None):
@@ -29,13 +30,21 @@ class PlayerButtons (Frame):
          # score points if it's a goalhorn
          if self.pname not in reserved or self.pname == "goal":
             self.game.score(self.pname, self.home)
-         for clist in self.clists:
-            if clist.check(self.game):
-               self.song = clist
+         i = 0
+         while i < len(self.clists):
+            try:
+               checked = self.clists[i].check(self.game)
+            except UnloadSong:
+               self.clists[i].disable()
+               del self.clists[i]
+               continue
+            if checked:
+               self.song = self.clists[i]
                print("Playing",self.song.songname)
                self.song.play()
                self.playButton.configure(relief=SUNKEN)
                return
+            i += 1
          messagebox.showwarning("No Song Found", "No song for player {} matches current game state; no music will play.".format(self.pname))
       else:
          self.song.pause()
