@@ -22,6 +22,11 @@ def parse (filename, load = True, home = True):
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
    output = {}
+   filenames = {
+      "goal" : "Goalhorn",
+      "anthem" : "Anthem",
+      "victory" : "Victory Anthem"
+   }
    
    # open filename
    with open(filename) as f:
@@ -49,6 +54,13 @@ def parse (filename, load = True, home = True):
       player = data[0] # name of player
       if player not in output:
          output[player] = []
+      if len(data) == 1:
+         default = "{} - {}.mp3" if player in reserved else "{} - {} Goalhorn.mp3"
+         fancyname = filenames[player] if player in reserved else player
+         default = default.format(tname,fancyname)
+         print("No file name specified for {}, looking for {}.".format(player, default))
+         data.append(default)
+
       filename = folder+data[1] # location of song, relative to location of export file
       if load:
          clist = ConditionPlayer(data[0], tname, data[2:], filename, home, loadsong(filename,player=='victory'), (player != "anthem" and player != "victory"))
