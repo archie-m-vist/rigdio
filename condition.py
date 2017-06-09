@@ -54,7 +54,6 @@ class ArithCondition (Condition):
       args = self.args(gamestate)
       return eval(self.comparison.format(*args))
 
-
 class GoalCondition (ArithCondition):
    desc = """Plays when the number of goals this player has scored meet the condition."""
 
@@ -161,6 +160,19 @@ class MatchCondition (Condition):
       return "match {}".format(self.type)
    __repr__ = __str__
 
+class HomeCondition (Condition):
+   desc = """Plays if the team is at home. (Use 'not home' for away.)"""
+
+   def __init__(self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
+
+   def check (self, gamestate):
+      return self.home
+
+   def __str__(self):
+      return "home"
+   __repr__ = __str__
+
 class Instruction:
    """
       Class used for something which modifies a ConditionPlayer rather than determining when it will play.
@@ -206,6 +218,22 @@ class StartInstruction (Instruction):
       return "start {}".format(self.rawTime)
    __repr__ = __str__
 
+class PauseInstruction (Instruction):
+   desc = """Specify action taken when goalhorn is paused."""
+
+   def __init__ (self, pname, tname, tokens, home = True):
+      types = ["continue", "restart"]
+      if tokens[0] not in types:
+         raise ValueError("Unrecognised pause type (allowed values: {}).".format(", ".join(types)))
+      self.type = tokens[0]
+
+   def run (self, player):
+      player.pauseType = self.type
+
+   def __str__(self):
+      return "pause {}".format(self.type)
+   __repr__ = __str__
+
 conditions = {
    "goals" : GoalCondition,
    "comeback" : ComebackCondition,
@@ -214,7 +242,9 @@ conditions = {
    "not" : NotCondition,
    "lead" : LeadCondition,
    "match" : MatchCondition,
-   "start" : StartInstruction
+   "home" : HomeCondition,
+   "start" : StartInstruction,
+   "pause" : PauseInstruction
 }
 
 class ConditionList:
@@ -233,6 +263,7 @@ class ConditionList:
       self.conditions = []
       self.instructions = []
       self.startTime = 0
+      self.pauseType = "continue"
       for token in data:
          tokens = token.split()
          condition = ConditionList.buildCondition(pname, tname, tokens, home)
@@ -299,11 +330,11 @@ class ConditionPlayer (ConditionList):
       self.song = song
       self.isGoalhorn = goalhorn
       self.fade = None
-      self.startTime = None
+      self.startTime = 0
+      self.pauseType = "continue"
       for instruction in self.instructions:
          print(instruction)
          instruction.run(self)
-         print(self.song.get_time())
 
    def play (self):
       if self.fade is not None:
@@ -313,9 +344,10 @@ class ConditionPlayer (ConditionList):
          thread.join()
       self.song.play()
       # StartInstruction necessary code
-      if self.startTime is not None:
+      if self.startTime is not 0:
          self.song.set_time(self.startTime)
-         self.startTime = None
+         if self.pauseType != "restart":
+            self.startTime = 0
 
    def pause (self):
       if self.isGoalhorn:
@@ -324,6 +356,8 @@ class ConditionPlayer (ConditionList):
          self.fade.start()
       else:
          print("Pausing {}.".format(self.songname))
+         if self.pauseType == "restart":
+            self.song.set_time(self.startTime)
          self.song.pause()
    
 
@@ -335,5 +369,7 @@ def fadeOut (player):
       player.song.audio_set_volume(i)
       sleep(fadeTime/100)
       i -= 1
+   if player.pauseType == "restart":
+      player.song.set_time(player.startTime)
    player.song.pause()
    player.song.audio_set_volume(100)
