@@ -47,7 +47,15 @@ class Condition:
       """
       return str(self).split(" ")[1:]
 
-class GoalCondition (Condition):
+class ArithCondition (Condition):
+   desc = """Superclass for all conditions that evaluate an arithmetic expression."""
+
+   def check (self, gamestate):
+      args = self.args(gamestate)
+      return eval(self.comparison.format(*args))
+
+
+class GoalCondition (ArithCondition):
    desc = """Plays when the number of goals this player has scored meet the condition."""
 
    def __init__(self, pname, tname, tokens, home = True):
@@ -57,15 +65,14 @@ class GoalCondition (Condition):
          tokens[0] = "=="
       if tokens[0] not in operators:
          raise Exception("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+operators)
-      self.comparison = tokens[0]+" "+tokens[1]
+      self.comparison = "{} " + tokens[0]+" "+tokens[1]
    
    def __str__(self):
-      return "goals {}".format(self.comparison)
+      return self.comparison.format("goals")
    __repr__ = __str__
 
-   def check(self, gamestate):
-      goals = gamestate.player_goals(self.pname,self.home)
-      return eval(str(goals)+self.comparison)
+   def args (self, gamestate):
+      return (gamestate.player_goals(self.pname,self.home),)
 
 class NotCondition (Condition):
    desc = """Plays when the given condition is false."""
@@ -87,7 +94,7 @@ class NotCondition (Condition):
       return not self.condition.check(gamestate)
 
 class ComebackCondition (Condition):
-   desc = """Plays when the team was behind prior to this goal being scored."""
+   desc = """Plays when the team was behind prior to this goal being scored. Equivalent to gd <= 0."""
 
    def __init__(self, pname, tname, tokens, home = True):
       Condition.__init__(self,pname,tname,home)
@@ -124,6 +131,20 @@ class FirstCondition (Condition):
 
    def __str__(self):
       return "first"
+   __repr__ = __str__
+
+class LeadCondition (GoalCondition):
+   desc = """Plays if the goal difference (yourteam - theirteam) meets the given condition."""
+
+   def __init__ (self, pname, tname, tokens, home = True):
+      GoalCondition.__init__(self,pname,tname,tokens,home)
+
+   def args(self, gamestate):
+      gd = gamestate.team_score(self.home) - gamestate.opponent_score(self.home)
+      return (gd,)
+
+   def __str__(self):
+      return self.comparison.format("lead")
    __repr__ = __str__
 
 class Instruction:
@@ -177,6 +198,7 @@ conditions = {
    "first" : FirstCondition,
    "opponent" : OpponentCondition,
    "not" : NotCondition,
+   "lead" : LeadCondition,
    "start" : StartInstruction
 }
 
