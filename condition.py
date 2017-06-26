@@ -75,6 +75,21 @@ class GoalCondition (ArithCondition):
    def args (self, gamestate):
       return (gamestate.player_goals(self.pname,self.home),)
 
+class EveryCondition (ArithCondition):
+   desc = """Plays when the number of goals is divisible by the given number."""
+
+   def __init__(self, pname, tname, tokens, home = True):
+      Condition.__init__(self,pname,tname,home)
+      self.comparison = "{} % "+tokens[0]+" == 0"
+      self.num = tokens[0]
+
+   def __str__(self):
+      return "every {}".format(self.num)
+   __repr__ = __str__
+
+   def args (self, gamestate):
+      return (gamestate.player_goals(self.pname,self.home),)
+
 class NotCondition (Condition):
    desc = """Plays when the given condition is false."""
 
@@ -149,7 +164,7 @@ class LeadCondition (GoalCondition):
    __repr__ = __str__
 
 class MatchCondition (Condition):
-   desc = """Plays if the match any of the given types (group, knockouts, ro16, qfinal, sfinal, final)."""
+   desc = """Plays if the match any of the given types (group, knockouts, rof6, qfinal, sfinal, final)."""
 
    def __init__ (self, pname, tname, tokens, home = True):
       Condition.__init__(self,pname,tname,home)
@@ -200,7 +215,13 @@ class Instruction:
       return True
 
    """
-      Applies this instruction to a given media player object. Returns True on success or False on failure.
+      Prepares this instruction for later use (registering it to the start, end, pause instruction).
+   """
+   def prep (self, player):
+      return
+
+   """
+      Applies this instruction to a given media player object.
    """
    def run (self, player):
       return True
@@ -278,12 +299,15 @@ class EndInstruction (Instruction):
       self.type = tokens[0]
 
    def prep (self, player):
-      player.instructionsStart.append(self)
+      player.instructionsEnd.append(self)
+      if self.type != "loop":
+         player.song.get_media().add_options("input-repeat=0")
 
    def run (self, player):
-      player.endType = self.type
       if self.type == "stop":
-         player.song.get_media().add_options("input-repeat=0")
+         player.reloadSong()
+      elif self.type == "next":
+         return
 
    def __str__(self):
       return "end {}".format(self.type)
@@ -299,6 +323,7 @@ conditions = {
    "match" : MatchCondition,
    "home" : HomeCondition,
    "once" : OnceCondition,
+   "every" : EveryCondition,
    "start" : StartInstruction,
    "pause" : PauseInstruction,
    "end" : EndInstruction
@@ -409,6 +434,7 @@ class ConditionPlayer (ConditionList):
       self.pauseType = "continue"
       self.instructionsStart = []
       self.instructionsPause = []
+      self.instructionsEnd = []
       self.instruct()
    
    def instruct (self):
@@ -444,7 +470,9 @@ class ConditionPlayer (ConditionList):
             instruction.run(self)
          self.song.pause()
          if self.song.get_media().get_state() == vlc.State.Ended:
-            self.reloadSong()
+            for instruction in self.instructionsEnd:
+               instruction.run(self)
+            
 
    def disable (self):
       self.song.stop()
