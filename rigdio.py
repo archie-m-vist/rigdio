@@ -9,6 +9,7 @@ from rigparse import parse
 from gamestate import GameState
 from songgui import *
 from version import rigdio_version as version
+from rigdj_util import setMaxWidth
 
 from logger import startLog
 if __name__ == '__main__':
@@ -64,7 +65,9 @@ class Rigdio (Frame):
       Label(gameTypeMenu, text="Match Type").pack()
       gametype = StringVar()
       gametype.set("Group")
-      OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType).pack()
+      menu = OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType)
+      setMaxWidth(gametypes,menu)
+      menu.pack()
       return gameTypeMenu
 
    def changeGameType (self, option):

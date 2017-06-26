@@ -3,9 +3,8 @@ import tkinter.messagebox as messagebox
 from rigparse import reserved
 from rigdio_except import UnloadSong
 
-class PlayerButtons (Frame):
-   def __init__ (self, master, clists, home, game, text = None):
-      Frame.__init__(self, master)
+class PlayerButtons ():
+   def __init__ (self, frame, clists, home, game, text = None):
       # song information
       self.clists = clists
       self.home = home
@@ -21,9 +20,8 @@ class PlayerButtons (Frame):
          self.reserved = False
       else:
          self.reserved = True
-      Button(self, text="?", command=self.showSongs).grid(row = 0, column = 0)
-      self.playButton = Button(self, text=self.text, command=self.playSong)
-      self.playButton.grid(row = 0, column = 1)
+      self.listButton = Button(frame, text="?", command=self.showSongs)
+      self.playButton = Button(frame, text=self.text, command=self.playSong)
 
    def playSong (self):
       if self.song is None:
@@ -64,6 +62,10 @@ class PlayerButtons (Frame):
             text = "\n".join([text, str(clist)])
       messagebox.showinfo(title, text)
 
+   def insert (self, row):
+      self.listButton.grid(row=row,column=0,sticky=N+S)
+      self.playButton.grid(row=row,column=1,sticky=E+W)
+
 class TeamMenu (Frame):
    def __init__ (self, master, tname, players, home, game):
       Frame.__init__(self, master)
@@ -79,21 +81,23 @@ class TeamMenu (Frame):
       # button for anthem
       self.buildAnthemButtons()
       # buttons for victory anthems
-      self.buildVictoryAnthemMenu()
+      startRow = self.buildVictoryAnthemMenu() + 1
       # buttons for goalhorns
-      self.buildGoalhornMenu()
+      self.buildGoalhornMenu(startRow)
 
    def buildAnthemButtons (self):
-      PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem").pack()
+      PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem").insert(0)
 
    def buildVictoryAnthemMenu (self):
       if "victory" in self.players:
-         PlayerButtons(self, self.players["victory"], self.home, self.game, "Victory Anthem").pack()
+         PlayerButtons(self, self.players["victory"], self.home, self.game, "Victory Anthem").insert(1)
+         return 1
+      else:
+         return 0
 
-   def buildGoalhornMenu (self):
-      Label(self, text="Goalhorns").pack()
-      goalFrame = Frame(self)
-      PlayerButtons(goalFrame, self.players["goal"], self.home, self.game, "Standard Goalhorn").pack()
-      for name in self.playerNames:
-         PlayerButtons(goalFrame, self.players[name], self.home, self.game).pack()
-      goalFrame.pack()
+   def buildGoalhornMenu (self, startRow):
+      Label(self, text="Goalhorns").grid(row=startRow, column=0, columnspan=2)
+      PlayerButtons(self, self.players["goal"], self.home, self.game, "Standard Goalhorn").insert(startRow+1)
+      for i in range(len(self.playerNames)):
+         name = self.playerNames[i]
+         PlayerButtons(self, self.players[name], self.home, self.game).insert(startRow+i+2)
