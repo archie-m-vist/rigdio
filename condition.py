@@ -228,8 +228,12 @@ class StartInstruction (Instruction):
       self.rawTime = timestring
       self.startTime = 1000*int(timeToSeconds(timestring))
 
-   def run (self, player):
+   def prep (self, player):
+      player.instructionsStart.append(self)
       player.startTime = self.startTime
+
+   def run (self, player):
+      player.song.set_time(self.startTime)
 
    def __str__(self):
       return "start {}".format(self.rawTime)
@@ -240,12 +244,25 @@ class PauseInstruction (Instruction):
    types = ["continue", "restart"]
 
    def __init__ (self, pname, tname, tokens, home = True):
+      self.every = 1
       if tokens[0] not in PauseInstruction.types:
          raise ValueError("Unrecognised pause type (allowed values: {}).".format(", ".join(PauseInstruction.types)))
+      if len(tokens) > 1:
+         if tokens[1] == "every":
+            self.every = int(tokens[2])
       self.type = tokens[0]
 
+   def prep (self, player):
+      player.instructionsPause.append(self)
+      self.played = 0
+
    def run (self, player):
-      player.pauseType = self.type
+      self.played += 1
+      if self.type == "continue":
+         return
+      if self.played % self.every == 0:
+         if self.type == "restart":
+            player.song.set_time(player.startTime)
 
    def __str__(self):
       return "pause {}".format(self.type)
@@ -259,6 +276,9 @@ class EndInstruction (Instruction):
       if tokens[0] not in EndInstruction.types:
          raise ValueError("Unrecognised end type (allowed values: {}).".format(", ".join(EndInstruction.types)))
       self.type = tokens[0]
+
+   def prep (self, player):
+      player.instructionsStart.append(self)
 
    def run (self, player):
       player.endType = self.type
@@ -385,13 +405,16 @@ class ConditionPlayer (ConditionList):
       self.isGoalhorn = goalhorn
       self.fade = None
       self.startTime = 0
+      self.firstPlay = True
       self.pauseType = "continue"
+      self.instructionsStart = []
+      self.instructionsPause = []
       self.instruct()
    
    def instruct (self):
       for instruction in self.instructions:
          print(instruction)
-         instruction.run(self)
+         instruction.prep(self)
 
    def reloadSong (self):
       self.song = loadsong(self.songname, self.pname == "victory")
@@ -405,12 +428,10 @@ class ConditionPlayer (ConditionList):
          thread.join()
          
       self.song.play()
-
-      # StartInstruction necessary code
-      if self.startTime is not None:
-         self.song.set_time(self.startTime)
-         if self.pauseType != "restart" and self.endType != "stop":
-            self.startTime = None
+      if self.firstPlay:
+         for instruction in self.instructionsStart:
+            instruction.run(self)
+         self.firstPlay = False
 
    def pause (self):
       if self.isGoalhorn:
@@ -419,8 +440,8 @@ class ConditionPlayer (ConditionList):
          self.fade.start()
       else:
          print("Pausing {}.".format(self.songname))
-         if self.pauseType == "restart":
-            self.song.set_time(self.startTime)
+         for instruction in self.instructionsPause:
+            instruction.run(self)
          self.song.pause()
          if self.song.get_media().get_state() == vlc.State.Ended:
             self.reloadSong()
@@ -437,9 +458,10 @@ def fadeOut (player):
       player.song.audio_set_volume(i)
       sleep(fadeTime/100)
       i -= 1
-   if player.pauseType == "restart":
-      player.song.set_time(player.startTime)
+   for instruction in player.instructionsPause:
+      instruction.run(player)
    player.song.pause()
    if player.song.get_media().get_state() == vlc.State.Ended:
       player.reloadSong()
    player.song.audio_set_volume(100)
+   player.fade = None
