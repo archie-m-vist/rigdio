@@ -180,8 +180,8 @@ class LeadCondition (GoalCondition):
 
 class MatchCondition (Condition):
    desc = """Plays if the match any of the listed types."""
-   types = ["Group", "RO16", "Quarterfinal", "Semifinal", "Final", "Third Place", "Final Boss", "Consolation"]
-   knockout = ["RO16", "Quarterfinal", "Semifinal", "Final", "Third Place"]
+   types = ["Group", "RO16", "Quarterfinal", "Semifinal", "Final", "Third-Place", "Boss", "Consolation"]
+   knockout = ["RO16", "Quarterfinal", "Semifinal", "Final", "Third-Place"]
 
    def __init__ (self, tokens, **kwargs):
       super().__init__(**kwargs)

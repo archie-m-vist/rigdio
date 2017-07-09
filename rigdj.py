@@ -24,7 +24,7 @@ if __name__ == '__main__':
 class SongRow:
    def __init__ (self, editor, clist):
       self.editor = editor
-      self.master = self.editor.teamMenu
+      self.master = self.editor.songMenu
       self.clist = clist
       self.songName = StringVar()
       self.songNameEntry = Entry(self.master, textvariable = self.songName)
@@ -37,12 +37,12 @@ class SongRow:
          self.conditionButtons.append(button)
 
    def draw (self, row):
-      self.songNameButton.grid(row = row, column = 0)
-      self.songNameEntry.grid(row = row, column = 1)
-      self.newConditionButton.grid(row = row, column = 2)
+      self.songNameButton.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu)
+      self.songNameEntry.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+1)
+      self.newConditionButton.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+2)
       for i in range(len(self.conditionButtons)):
          button = self.conditionButtons[i]
-         button.grid(row = row, column = 3+i)
+         button.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+3+i)
 
    def clear (self):
       self.songNameEntry.grid_forget()
@@ -81,26 +81,32 @@ class SongRow:
                self.clist[index] = result
          self.editor.updateSongMenu(uiName(self.clist.pname))
 
-class Editor:
+class Editor (Frame):
+   firstConditionRow = 1
+   startSongMenu = 2
+
    def __init__ (self, master):
       # tkinter master window
-      self.master = master
+      super().__init__(master)
       # save/load
-      self.menuButtons = self.buildFileMenu()
-      self.menuButtons.pack()
+      fileMenu = self.buildFileMenu()
+      fileMenu.pack(anchor="nw")
       # file name of the .4ccm
       self.filename = None
       # team editor portion
       self.teamMenu = self.buildTeamEditor()
-      self.teamMenu.pack()
+      self.teamMenu.pack(anchor="nw")
+
+      self.songMenu = self.buildSongMenu()
+      self.songMenu.pack(anchor="nw")
 
       self.updatePlayerMenu()
 
    def buildFileMenu (self):
       """
-         Constructs the file save/load menu buttons and returns a tk frame containing them.
+         Constructs the file save/load menu buttons.
       """
-      buttons = Frame(self.master)
+      buttons = Frame(self)
       self.loadButton = Button(buttons, text="Load .4ccm", command=self.load4ccm)
       self.loadButton.pack(side=LEFT)
       self.saveButton = Button(buttons, text="Save .4ccm", command=self.save4ccm)
@@ -113,7 +119,7 @@ class Editor:
       """
          Constructs the team editing menu and returns a tk frame containing it.
       """
-      frame = Frame(self.master)
+      frame = Frame(self)
       # team name
       Label(frame, text="Team:", font="-weight bold").grid(row=1,column=0,sticky=W)
       self.teamEntry = Entry(frame)
@@ -137,11 +143,16 @@ class Editor:
       self.playerEntry.grid(row = 2,column = 2)
       self.playerButton = Button(frame, text="Add Player", command=self.newplayer)
       self.playerButton.grid(row = 2, column = 3)
+      return frame
+
+   def buildSongMenu (self):
       # song listing menu
-      self.songMenu = []
+      frame = Frame(self)
+      self.songRows = []
+      self.songButtons = []
       ## headings
-      Label(frame, text="Song Location").grid(row=3,column=0,columnspan=2)
-      Label(frame, text="Conditions").grid(row=3,column=2,columnspan=2)
+      Label(frame, text="Song Location").grid(row=0,column=2,columnspan=2)
+      Label(frame, text="Conditions").grid(row=0,column=4,columnspan=2)
       ## new song buton
       self.newSongButton = Button(frame, text="New Song", command=self.newSong)
       return frame
@@ -179,26 +190,59 @@ class Editor:
    def newSong (self):
       name = self.player.get()
       self.players[name].append(ConditionList(name, self.teamEntry.get(), [], "New Song"))
-      self.updateSongMenu(name)
+      print("Added song to player {}.".format(name))
+      self.updateSongMenu()
 
-   def updateSongMenu (self, name):
-      for row in self.songMenu:
+   def addSongButtons (self, index):
+      b1, b2 = None, None
+      name = self.player.get()
+      if index != 0:
+         b1 = Button(self.songMenu,text="+",command=lambda: self.moveSongUp(index))
+         b1.grid(row=index+Editor.firstConditionRow,column=0)
+      if index != len(self.players[name])-1:
+         b2 = Button(self.songMenu,text="-",command=lambda: self.moveSongDown(index))
+         b2.grid(row=index+Editor.firstConditionRow,column=1)
+      self.songButtons.append((b1,b2))
+
+   def updateSongMenu (self, name = None):
+      if name is None:
+         name = self.player.get()
+      # clear old information
+      for row in self.songRows:
          row.clear()
+      for b1,b2 in self.songButtons:
+         if b1 is not None:
+            b1.grid_forget()
+         if b2 is not None:
+            b2.grid_forget()
       self.newSongButton.grid_forget()
-      self.songMenu = []
+      self.songRows = []
       print("Displaying songs for player {}.".format(name))
+      # get condition lists
       clists = self.players[name]
-      row = 4
+      # construct song rows
+      index = 0
       for clist in clists:
          conditionRow = SongRow(self,clist)
-         conditionRow.draw(row)
-         self.songMenu.append(conditionRow)
-         row += 1
-      self.newSongButton.grid(row = row, column = 0)
+         conditionRow.draw(index)
+         self.songRows.append(conditionRow)
+         self.addSongButtons(index)
+         index += 1
+      self.newSongButton.grid(row = index+Editor.firstConditionRow, column = 2)
 
    def moveSongUp (self, index):
       name = self.player.get()
-      self.players[name]
+      temp = self.players[name].pop(index)
+      self.players[name].insert(index-1,temp)
+      print("Moved song {} for player {} up.".format(temp.songname,name))
+      self.updateSongMenu(name)
+
+   def moveSongDown (self, index):
+      name = self.player.get()
+      temp = self.players[name].pop(index)
+      self.players[name].insert(index+1,temp)
+      print("Moved song {} for player {} down.".format(temp.songname,name))
+      self.updateSongMenu(name)
 
    def writefile (self,filename):
       if self.teamEntry.get() == "":
@@ -234,6 +278,7 @@ def main ():
    master.title("rigDJ {}".format(version))
    # construct editor object in window
    dj = Editor(master)
+   dj.pack()
    # run
    mainloop()
 

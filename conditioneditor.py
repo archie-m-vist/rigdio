@@ -196,12 +196,14 @@ class MatchConditionEditor (ConditionEditor):
       for i in range(len(MatchCondition.types)//2):
          key = MatchCondition.types[i]
          Label(checkerFrame,text=key).grid(row = i, column = 0)
+         key = key.lower()
          self.selector[key] = IntVar()
          self.buttons[key] = Checkbutton(checkerFrame,variable=self.selector[key])
          self.buttons[key].grid(row=i, column = 1)
 
          key = MatchCondition.types[i+len(MatchCondition.types)//2]
          Label(checkerFrame,text=key).grid(row = i, column = 2)
+         key = key.lower()
          self.selector[key] = IntVar()
          self.buttons[key] = Checkbutton(checkerFrame,variable=self.selector[key])
          self.buttons[key].grid(row=i, column = 3)
@@ -209,15 +211,24 @@ class MatchConditionEditor (ConditionEditor):
       if len(MatchCondition.types) % 2 != 0:
          key = MatchCondition.types[-1]
          Label(checkerFrame,text=key).grid(row = len(MatchCondition.types)//2, column = 0)
+         key = key.lower()
          self.selector[key] = IntVar()
          self.buttons[key] = Checkbutton(checkerFrame,variable=self.selector[key])
          self.buttons[key].grid(row=len(MatchCondition.types)//2, column = 1)
+
+      for token in tokens:
+         try:
+            self.selector[token.lower()].set(1)
+         except KeyError:
+            continue
+
       checkerFrame.pack()
       Button(self, text="Toggle Knockouts", command=self.toggleKnockouts).pack()
 
    def tokens (self):
       output = []
       for key in MatchCondition.types:
+         key = key.lower()
          temp = self.selector[key]
          if temp.get() == 1:
             output.append(key)
@@ -226,10 +237,12 @@ class MatchConditionEditor (ConditionEditor):
    def toggleKnockouts (self):
       off = False
       for key in MatchCondition.knockout:
+         key = key.lower()
          if self.selector[key].get() == 0:
             off = True
             break
       for key in MatchCondition.knockout:
+         key = key.lower()
          if off:
             self.buttons[key].select()
          else:
