@@ -3,7 +3,7 @@ from time import sleep
 from os.path import basename, abspath, isfile
 import vlc
 
-from rigdio_except import UnloadSong
+from rigdio_except import UnloadSong, PlayNextSong
 from rigdio_util import timeToSeconds
 
 fadeTime = 3
@@ -11,14 +11,11 @@ fadeTime = 3
 class Condition:
    null = "nullCond"
 
-   def __init__(self, pname, tname, home = True):
+   def __init__(self, pname = "", tname = "", home = True, **kwargs):
+      super().__init__(**kwargs) # initialise Object()
       self.pname = pname
       self.tname = tname
       self.home = home
-
-   def __str__(self):
-      return Condition.null
-   __repr__ = __str__
 
    def check(self, gamestate):
       """
@@ -27,7 +24,7 @@ class Condition:
          Arguments:
           - gamestate (GameState): state of the game.
       """
-      return True
+      raise NotImplementedError("Condition subclass must override check().")
 
    def isInstruction (self):
       """
@@ -39,38 +36,62 @@ class Condition:
       return False
 
    def type (self):
-      return str(self).split(" ")[0]
+      """
+         Name of this condition type.
+
+         This is the string used to mark the condition in .4ccm files.
+      """
+      raise NotImplementedError("Condition subclass must override type().")
 
    def tokens (self):
       """
          Gives this Condition as a list of tokens, EXCLUDING the type of the condition.
 
-         In essence, these are the tokens passed to the constructor.
+         In essence, these are the tokens passed to the constructor, and listed after the condition name in files.
       """
-      return str(self).split(" ")[1:]
+      raise NotImplementedError("Condition subclass must override tokens().")
+
+   def __str__ (self):
+      return "{} {}".format(self.type()," ".join(self.tokens()))
+   __repr__ = __str__
 
 class ArithCondition (Condition):
    desc = """Superclass for all conditions that evaluate an arithmetic expression."""
 
+   def __init__(self, **kwargs):
+      super().__init__(**kwargs)
+
    def check (self, gamestate):
       args = self.args(gamestate)
-      return eval(self.comparison.format(*args))
+      return eval(self.expression().format(*args))
+
+   def args (self, gamestate):
+      raise NotImplementedError("ArithCondition subclass must override args().")
+
+   def expression (self):
+      raise NotImplementedError("ArithCondition subclass must override expression().")
+
 
 class GoalCondition (ArithCondition):
    desc = """Plays when the number of goals this player has scored meet the condition."""
 
-   def __init__(self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
       operators = ["<", ">", "<=", ">=", "=="]
       if tokens[0] == "=":
          tokens[0] = "=="
       if tokens[0] not in operators:
          raise Exception("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+operators)
-      self.comparison = "{} " + tokens[0]+" "+tokens[1]
+      self.comparison = "{} "+tokens[0]+" "+tokens[1]
    
-   def __str__(self):
-      return self.comparison.format("goals")
-   __repr__ = __str__
+   def type (self):
+      return "goals"
+
+   def tokens (self):
+      return self.comparison.split(" ")[1:]
+
+   def expression (self):
+      return self.comparison
 
    def args (self, gamestate):
       return (gamestate.player_goals(self.pname,self.home),)
@@ -78,125 +99,125 @@ class GoalCondition (ArithCondition):
 class EveryCondition (ArithCondition):
    desc = """Plays when the number of goals is divisible by the given number."""
 
-   def __init__(self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
       self.comparison = "{} % "+tokens[0]+" == 0"
       self.num = tokens[0]
 
-   def __str__(self):
-      return "every {}".format(self.num)
-   __repr__ = __str__
+   def type (self):
+      return "every"
+
+   def tokens (self):
+      return [str(self.num)]
 
    def args (self, gamestate):
       return (gamestate.player_goals(self.pname,self.home),)
 
-class NotCondition (Condition):
-   desc = """Plays when the given condition is false."""
-
-   def __init__(self, pname, tname, tokens = [], home = True, condition = None):
-      Condition.__init__(self,pname,tname,home)
-      if condition is None:
-         self.condition = ConditionList.buildCondition(pname,tname,tokens,home)
-      else:
-         self.condition = condition
-
-   def __str__(self):
-      return "not {}".format(str(self.condition))
-
-   def __repr__(self):
-      return "not {}".format(repr(self.condition))
-
-   def check(self, gamestate):
-      return not self.condition.check(gamestate)
+   def expression(self):
+      return self.comparison
 
 class ComebackCondition (Condition):
-   desc = """Plays when the team was behind prior to this goal being scored. Equivalent to gd <= 0."""
+   desc = """Plays when the team was behind prior to this goal being scored. Equivalent to lead <= 0."""
 
-   def __init__(self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
 
    def check(self,gamestate):
       return gamestate.team_score(self.home) <= gamestate.opponent_score(self.home) and gamestate.opponent_score(self.home) > 0
 
-   def __str__(self):
+   def type (self):
       return "comeback"
-   __repr__ = __str__
+
+   def tokens (self):
+      return []
 
 class OpponentCondition (Condition):
    desc = """Plays when the opponent is one of the listed teams (separated by spaces, exclude slashes from ends)."""
 
-   def __init__(self,pname,tname,tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
       self.others = [x.lower() for x in tokens]
 
    def check(self,gamestate):
       return gamestate.opponent_name(self.home) in self.others
 
-   def __str__(self):
-      return "opponent {}".format(" ".join(self.others))
-   __repr__ = __str__
+   def type (self):
+      return "opponent"
+
+   def tokens (self):
+      return self.others
 
 class FirstCondition (Condition):
    desc = """Plays if this is the first goal that the team has scored in this match."""
    
-   def __init__ (self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__ (self, tokens, **kwargs):
+      super().__init__(**kwargs)
 
    def check(self, gamestate):
       return gamestate.team_score(self.home) == 1
 
-   def __str__(self):
+   def type (self):
       return "first"
-   __repr__ = __str__
+
+   def tokens (self):
+      return []
 
 class LeadCondition (GoalCondition):
    desc = """Plays if the goal difference (yourteam - theirteam) meets the given condition."""
 
-   def __init__ (self, pname, tname, tokens, home = True):
-      GoalCondition.__init__(self,pname,tname,tokens,home)
+   def __init__ (**kwargs):
+      # pass tokens up to GoalCondition, the only difference in handling is in args()
+      super().__init__(**kwargs)
 
    def args(self, gamestate):
       gd = gamestate.team_score(self.home) - gamestate.opponent_score(self.home)
       return (gd,)
 
-   def __str__(self):
-      return self.comparison.format("lead")
-   __repr__ = __str__
+   def type (self):
+      return "lead"
+
+   # other methods don't need to be implemented because they're the same as GoalCondition
 
 class MatchCondition (Condition):
-   desc = """Plays if the match any of the given types (group, knockouts, rof6, qfinal, sfinal, final)."""
+   desc = """Plays if the match any of the listed types."""
+   types = ["Group", "RO16", "Quarterfinal", "Semifinal", "Final", "Third Place", "Final Boss", "Consolation"]
+   knockout = ["RO16", "Quarterfinal", "Semifinal", "Final", "Third Place"]
 
-   def __init__ (self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__ (self, tokens, **kwargs):
+      super().__init__(**kwargs)
       if len(tokens) == 1 and tokens[0].lower() == "knockouts":
-         tokens = ["ro16", "quarterfinal", "semifinal", "final"]
-      self.types = set(tokens)
+         tokens = MatchCondition.knockout
+      self.lst = set([x.lower() for x in tokens])
 
    def check (self, gamestate):
-      return gamestate.gametype in self.types
+      return gamestate.gametype.lower() in self.lst
 
-   def __str__(self):
-      return "match {}".format(" ".join(list(self.types)))
-   __repr__ = __str__
+   def type (self):
+      return "match"
+
+   def tokens (self):
+      return list(self.lst)
 
 class HomeCondition (Condition):
    desc = """Plays if the team is at home. (Use 'not home' for away.)"""
 
-   def __init__(self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
 
    def check (self, gamestate):
       return self.home
 
-   def __str__(self):
+   def type (self):
       return "home"
-   __repr__ = __str__
+
+   def tokens (self):
+      return []
 
 class OnceCondition (Condition):
    desc = """Plays this song exactly once."""
 
-   def __init__(self, pname, tname, tokens, home = True):
-      Condition.__init__(self,pname,tname,home)
+   def __init__(self, tokens, **kwargs):
+      super().__init__(**kwargs)
       self.okay = True
 
    def check (self, gamestate):
@@ -205,33 +226,64 @@ class OnceCondition (Condition):
          return True
       raise UnloadSong
 
+class MetaCondition (Condition):
+   def __init__ (self, tokens, **kwargs):
+      super().__init__(**kwargs)
+      temp = (" ".join(tokens)).split(",")
+      for item in temp:
+         self.sub.append(ConditionList.buildCondition(self.pname,self.tname,item.split(" "),self.home))
+
+   def tokens (self):
+      return ",".join([str(x) for x in self.subconditions])
+
+   def subconditionCount (self):
+      raise NotImplementedError
+
+   def subconditions (self):
+      return self.sub
+
+class NotCondition (MetaCondition):
+   desc = """Plays when the given condition is false."""
+
+   def __init__(self, tokens, condition = None, **kwargs):
+      if condition is not None:
+         kwargs["tokens"] = [condition.type, *condition.tokens()]
+         home = condition.home
+      super().__init__(**kwargs)
+
+   def type (self):
+      return "not"
+
+   def check(self, gamestate):
+      return not self.subconditions()[0].check(gamestate)
+
 class Instruction:
    """
       Class used for something which modifies a ConditionPlayer rather than determining when it will play.
 
-      This is a purely internal distinction; Instruction and Condition objects are manipulated and created the same ways.
+      This is a purely internal distinction; Instruction and Condition objects are manipulated and created the same ways by editing files or using rigDJ.
    """
    def isInstruction (self):
       return True
 
-   """
-      Prepares this instruction for later use (registering it to the start, end, pause instruction).
-   """
    def prep (self, player):
-      return
+      """
+         Prepares this instruction for later use (registering it to the start, end, or pause instruction list).
+      """
+      raise NotImplementedError("Instruction subclass must override prep().")
 
-   """
-      Applies this instruction to a given media player object.
-   """
    def run (self, player):
-      return True
+      """
+         Applies this instruction to a given media player object.
+      """
+      raise NotImplementedError("Instruction subclass must override run().")
 
-   def __str__(self):
-      return "nullInst"
+   def __str__ (self):
+      return "{} {}".format(self.type()," ".join(self.tokens()))
    __repr__ = __str__
 
    def type (self):
-      return str(self).split(" ")[0]
+      raise NotImplementedError("Instruction subclass must override type().")
 
    def tokens (self):
       """
@@ -239,12 +291,12 @@ class Instruction:
 
          In essence, these are the tokens passed to the constructor.
       """
-      return str(self).split(" ")[1:]
+      raise NotImplementedError("Instruction subclass must override tokens().")
 
 class StartInstruction (Instruction):
    desc = """Starts the file at the given time (in min:sec format)."""
 
-   def __init__ (self, pname, tname, tokens, home = True):
+   def __init__ (self, tokens, **kwargs):
       timestring = tokens[0]
       self.rawTime = timestring
       self.startTime = 1000*int(timeToSeconds(timestring))
@@ -264,14 +316,14 @@ class PauseInstruction (Instruction):
    desc = """Specify action taken when goalhorn is paused."""
    types = ["continue", "restart"]
 
-   def __init__ (self, pname, tname, tokens, home = True):
+   def __init__ (self, tokens, **kwargs):
       self.every = 1
       if tokens[0] not in PauseInstruction.types:
          raise ValueError("Unrecognised pause type (allowed values: {}).".format(", ".join(PauseInstruction.types)))
       if len(tokens) > 1:
          if tokens[1] == "every":
             self.every = int(tokens[2])
-      self.type = tokens[0]
+      self.command = tokens[0]
 
    def prep (self, player):
       player.instructionsPause.append(self)
@@ -279,38 +331,38 @@ class PauseInstruction (Instruction):
 
    def run (self, player):
       self.played += 1
-      if self.type == "continue":
+      if self.command == "continue":
          return
       if self.played % self.every == 0:
-         if self.type == "restart":
+         if self.command == "restart":
             player.song.set_time(player.startTime)
 
    def __str__(self):
-      return "pause {}".format(self.type)
+      return "pause {}".format(self.command)
    __repr__ = __str__
 
 class EndInstruction (Instruction):
    desc = """Specify action taken when goalhorn reaches the end."""
    types = ["loop", "stop"]
 
-   def __init__ (self, pname, tname, tokens, home = True):
+   def __init__ (self, tokens, **kwargs):
       if tokens[0] not in EndInstruction.types:
          raise ValueError("Unrecognised end type (allowed values: {}).".format(", ".join(EndInstruction.types)))
-      self.type = tokens[0]
+      self.command = tokens[0]
 
    def prep (self, player):
       player.instructionsEnd.append(self)
-      if self.type != "loop":
+      if self.command != "loop":
          player.song.get_media().add_options("input-repeat=0")
 
    def run (self, player):
-      if self.type == "stop":
+      if self.command == "stop":
          player.reloadSong()
-      elif self.type == "next":
-         return
+      elif self.command == "next":
+         raise PlayNextSong
 
    def __str__(self):
-      return "end {}".format(self.type)
+      return "end {}".format(self.command)
    __repr__ = __str__
 
 conditions = {
@@ -330,17 +382,18 @@ conditions = {
 }
 
 class ConditionList:
-   def buildCondition(pname, tname, tokens, home = True):
+   def buildCondition(tokens, **kwargs):
       if len(tokens) == 0:
-         raise ValueError("Cannot build condition without tokens.")
+         return None # empty token list
       try:
-         return conditions[tokens[0].lower()](pname,tname,tokens[1:],home)
+         return conditions[tokens[0].lower()](tokens=tokens[1:],**kwargs)
       except KeyError:
          raise ValueError("condition/instruction {} not recognised.".format(tokens[0]))
 
    def __init__(self, pname, tname, data, songname, home = True):
       self.pname = pname
       self.tname = tname
+      self.home = home
       self.songname = songname
       self.conditions = []
       self.instructions = []
@@ -350,7 +403,7 @@ class ConditionList:
       self.pauseType = "continue"
       for token in data:
          tokens = token.split()
-         condition = ConditionList.buildCondition(pname, tname, tokens, home)
+         condition = ConditionList.buildCondition(tokens, pname=self.pname, tname=self.tname, home=self.home)
          if condition.isInstruction():
             self.instructions.append(condition)
          else:
@@ -429,6 +482,7 @@ class ConditionPlayer (ConditionList):
       self.song = song
       self.isGoalhorn = goalhorn
       self.fade = None
+      self.endChecker = None
       self.startTime = 0
       self.firstPlay = True
       self.pauseType = "continue"
@@ -458,6 +512,8 @@ class ConditionPlayer (ConditionList):
          for instruction in self.instructionsStart:
             instruction.run(self)
          self.firstPlay = False
+      if len(self.instructionsEnd) > 0:
+         self.endChecker = threading.Thread(target=self.checkEnd)
 
    def pause (self):
       if self.isGoalhorn:
@@ -469,10 +525,13 @@ class ConditionPlayer (ConditionList):
          for instruction in self.instructionsPause:
             instruction.run(self)
          self.song.pause()
+   
+   def checkEnd (self):
+      while self.endChecker is not None:
          if self.song.get_media().get_state() == vlc.State.Ended:
             for instruction in self.instructionsEnd:
                instruction.run(self)
-            
+            self.endChecker = None
 
    def disable (self):
       self.song.stop()

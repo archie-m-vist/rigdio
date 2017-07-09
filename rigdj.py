@@ -4,6 +4,7 @@ import tkinter.messagebox as messagebox
 from tkinter.simpledialog import Dialog
 import tkinter.font
 from condition import *
+from conditioneditor import ConditionDialog
 from rigparse import parse
 from rigdj_util import *
 from version import rigdj_version as version
@@ -19,204 +20,6 @@ if __name__ == '__main__':
 #  2 - player information
 #  3 - headings
 # 3+ - songs and conditions
-
-class ConditionEditor (Dialog):
-   def defaultTokens ():
-      output = {
-         "goals" : ["==",2],
-         "comeback" : [],
-         "first" : [],
-         "opponent" : [""],
-         "not" : [],
-         "start" : ["0:00"]  
-      }
-      return output
-
-   def __init__ (self, master, condition, new = False):
-      self.condition = condition
-      self.master = master
-      self.pname = condition.pname
-      self.tname = condition.tname
-      self.tokens = []
-      self.subConditions = []
-      if str(self.condition) != "nullCond":
-         self.tokens = self.condition.tokens()
-         self.updateSubConditions()
-      # UI information
-      self.fields = []
-      self.elements = []
-      # check if new 
-      self.new = new
-      Dialog.__init__(self,master,"Editing Condition")
-
-   def body (self, frame):
-      self.bodyFrame = frame
-      self.conditionType = StringVar()
-      self.conditionType.set("")
-      if str(self.condition) != "nullCond":
-         self.conditionType.set(self.condition.type())
-      # condition type selector
-      conditionTypeMenu, self.conditionDescLabel = self.buildConditionTypeMenu()
-      conditionTypeMenu.pack()
-      
-      self.mainEditor = Frame(frame)
-      self.mainEditor.pack()
-      self.changeConditionType(self.conditionType.get(),False)
-
-   def buildConditionTypeMenu (self):
-      """
-         Builds the condition type selector and docstring menu.
-      """
-      frame = Frame(self.bodyFrame)
-      selectorFrame = Frame(frame)
-      Label(selectorFrame, text="Condition Type", font="-weight bold").pack(side=LEFT)
-      ctypes = list(conditions.keys())
-      ctypes.sort()
-      selector = OptionMenu(selectorFrame, self.conditionType, *ctypes, command=self.changeConditionType)
-      setMaxWidth(ctypes,selector)
-      selector.pack(side=LEFT)
-      selectorFrame.pack()
-      # condition description
-      descLabelFrame = Frame(frame)
-      descLabel = Label(descLabelFrame, text="", anchor=W, justify=LEFT, wraplength="10c")
-      descLabel.pack()
-      Label(descLabelFrame, text="", width=60).pack()
-      descLabelFrame.pack()
-      return frame, descLabel
-
-   def validate (self):
-      ctype = self.conditionType.get()
-      if ctype == "goals":
-         try: 
-            int(self.fields[1].get())
-         except:
-            messagebox.showwarning("Input Error", "Goals instruction must be compared to an integer.")
-            return False
-      elif ctype == "start":
-         if timeToSeconds(self.fields[0].get()) is None:
-            messagebox.showwarning("Input Error", "Start instruction requires a time formatted as any of: day:hour:min:sec, hour:min:sec, min:sec, or sec.")
-            return False
-      elif ctype == "not":
-         if self.subConditions[0] == None:
-            messagebox.showwarning("Input Error", "No condition defined for not condition.")
-      return True
-
-   def apply (self):
-      self.tokens = [str(x.get()) for x in self.fields]
-      ctype = self.conditionType.get()
-      if ctype == "opponent":
-         self.tokens = self.tokens[0].split(" ")
-      
-      if ctype == "not":
-         self.condition = NotCondition(self.pname, self.tname, condition = self.subConditions[0])
-      else:
-         self.condition = conditions[ctype](self.pname, self.tname, self.tokens)
-
-   def buttonbox(self):
-        box = Frame(self)
-
-        w = Button(box, text="OK", width=10, command=self.ok, default=ACTIVE)
-        w.pack(side=LEFT, padx=5, pady=5)
-        if not self.new:
-           w = Button(box, text="Delete", width=10, command=self.delete)
-           w.pack(side=LEFT, padx=5, pady=5)
-        w = Button(box, text="Cancel", width=10, command=self.cancel)
-        w.pack(side=LEFT, padx=5, pady=5)
-
-        self.bind("<Return>", self.ok)
-        self.bind("<Escape>", self.cancel)
-
-        box.pack()
-
-   def delete (self):
-      self.condition = -1
-      self.cancel()
-
-   def changeConditionType (self, value, resetTokens = True):
-      # reset existing elements and fields if any
-      self.fields = []
-      for element in self.elements:
-         element.grid_forget()
-      self.elements = []
-      
-      # update description label
-      if value == "":
-         desc = "No condition type selected."
-      else:
-         desc = conditions[value].desc
-      self.conditionDescLabel['text'] = desc
-
-      # if no type selected, we're done
-      if value is "":
-         return None
-
-      # reset tokens to default if necessary
-      if resetTokens:
-         self.tokens = ConditionEditor.defaultTokens()[value]
-         self.subConditions = []
-
-      # construct body of each condition type
-      if value == "goals":
-         self.elements.append(Label(self.mainEditor, text="Goals By Player"))
-         self.elements[-1].grid(row=2,column=0,sticky=W)
-         # operator
-         self.fields.append(StringVar())
-         self.fields[0].set(self.tokens[0])
-         operators = ["==", "!=", "<", ">", "<=", ">="]
-         opSelector = OptionMenu(self.mainEditor, self.fields[0], *operators)
-         setMaxWidth(operators, opSelector)
-         opSelector.grid(row=2,column=1,sticky=W)
-         self.elements.append(opSelector)
-         # value
-         self.fields.append(StringVar())
-         self.fields[1].set(str(self.tokens[1]))
-         countEntry = Entry(self.mainEditor, textvariable=self.fields[1])
-         countEntry.grid(row=2,column=2,sticky=W)
-         self.elements.append(countEntry)
-      elif value == "comeback":
-         # comeback takes no arguments
-         pass
-      elif value == "first":
-         # first takes no arguments
-         pass
-      elif value == "opponent":
-         self.elements.append(Label(self.mainEditor, text="Opponent is Any Of"))
-         self.elements[-1].grid(row=2,column=0,sticky=W)
-         self.fields.append(StringVar())
-         opponentEntry = Entry(self.mainEditor, textvariable=self.fields[0])
-         opponentEntry.grid(row=2,column=1,sticky=W+E)
-         self.elements.append(opponentEntry)
-      elif value == "not":
-         self.elements.append(Label(self.mainEditor, text="Not"))
-         self.elements[-1].grid(row=2,column=0,sticky=W)
-         buttonText = "New Condition"
-         if len(self.subConditions) > 0:
-            buttonText = str(self.subConditions[0])
-         else:
-            self.subConditions.append(Condition(self.pname,self.tname))
-         self.elements.append(Button(self.mainEditor, text=buttonText, command = lambda: self.editSubCondition(0)))
-         self.elements[-1].grid(row=2,column=1)
-         pass
-      elif value == "start":
-         self.elements.append(Label(self.mainEditor, text="Start Playback At"))
-         self.elements[-1].grid(row=2,column=0,sticky=W)
-         self.fields.append(StringVar())
-         timeEntry = Entry(self.mainEditor, textvariable=self.fields[0])
-         timeEntry.grid(row=2,column=1,sticky=W+E)
-         self.elements.append(opponentEntry)
-
-   def updateSubConditions (self):
-      self.subConditions = []
-      if self.condition.type() == "not":
-         self.subConditions.append(self.condition.condition)
-
-   def editSubCondition (self, index):
-      condition = self.subConditions[index]
-      try:
-         self.subConditions[index] = ConditionEditor(self.master,condition,condition.type() == Condition.null).condition
-      except Exception as e:
-         print(e)
-      self.changeConditionType(self.conditionType.get(), False)
 
 class SongRow:
    def __init__ (self, editor, clist):
@@ -260,14 +63,14 @@ class SongRow:
    def editCondition (self, index):
       # check if condition is new
       if index == len(self.clist):
-         condition = Condition(self.clist.pname, self.clist.tname, True)
+         condition = None
       # check if index is out of range
       elif (index < 0 or index > len(self.clist) ):
          raise KeyError("editCondition index must be <= length of condition list.")
       else:
          condition = self.clist[index]
       # edit condition in its own window
-      result = ConditionEditor(self.master,condition,index == len(self.clist)).condition
+      result = ConditionDialog(self.master,condition,index == len(self.clist)).condition
       if result is not None:
          if result == -1:
             self.clist.pop(index)
@@ -392,6 +195,10 @@ class Editor:
          self.songMenu.append(conditionRow)
          row += 1
       self.newSongButton.grid(row = row, column = 0)
+
+   def moveSongUp (self, index):
+      name = self.player.get()
+      self.players[name]
 
    def writefile (self,filename):
       if self.teamEntry.get() == "":

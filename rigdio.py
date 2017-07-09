@@ -5,6 +5,7 @@ from tkinter import *
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 
+from condition import MatchCondition
 from rigparse import parse
 from gamestate import GameState
 from songgui import *
@@ -61,7 +62,7 @@ class Rigdio (Frame):
 
    def initGameTypeMenu (self):
       gameTypeMenu = Frame(self)
-      gametypes = ["Group", "RO16", "Quarterfinal", "Semifinal", "Final"]
+      gametypes = MatchCondition.types
       Label(gameTypeMenu, text="Match Type").pack()
       gametype = StringVar()
       gametype.set("Group")
