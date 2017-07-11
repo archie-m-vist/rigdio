@@ -348,7 +348,7 @@ class EndInstructionEditor (ConditionEditor):
    def build (self, tokens):
       self.fields.append(StringVar())
       self.fields[0].set(tokens[0])
-      selector = OptionMenu(self, self.fields[0], EndInstruction.types)
+      selector = OptionMenu(self, self.fields[0], *EndInstruction.types)
       setMaxWidth(EndInstruction.types, selector)
       selector.pack()
 
