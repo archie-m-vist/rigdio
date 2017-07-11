@@ -54,7 +54,7 @@ class SongRow:
 
    def findSong (self):
       songname = filedialog.askopenfilename(filetypes = (("Audio Files","*.mp3 *.wav *.ogg *.flac"), ("All Files", "*")))
-      self.songNameEntry.clear(0,END)
+      self.songNameEntry.delete(0,END)
       self.songNameEntry.insert(0,songname)
 
    def newCondition (self):
