@@ -5,6 +5,8 @@ from tkinter import *
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 
+from config import genCfg
+
 from condition import MatchCondition
 from rigparse import parse
 from gamestate import GameState
@@ -128,4 +130,8 @@ def main ():
       return
 
 if __name__ == '__main__':
-   main()
+   if len(sys.argv) > 1 and sys.argv[1] == "gencfg":
+      print("Generating config file rigdio.yml")
+      genCfg()
+   else:
+      main()
