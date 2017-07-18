@@ -19,7 +19,7 @@ if __name__ == '__main__':
 #  1 - team name
 #  2 - player information
 #  3 - headings
-# 3+ - songs and conditions
+# 4+ - songs and conditions
 
 class SongRow:
    def __init__ (self, editor, clist):
@@ -56,6 +56,8 @@ class SongRow:
       songname = filedialog.askopenfilename(filetypes = (("Audio Files","*.mp3 *.wav *.ogg *.flac"), ("All Files", "*")))
       self.songNameEntry.delete(0,END)
       self.songNameEntry.insert(0,songname)
+      self.songName.set(songname)
+      self.clist.songname = songname
 
    def newCondition (self):
       self.editCondition(len(self.clist))
