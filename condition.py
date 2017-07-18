@@ -3,10 +3,9 @@ from time import sleep
 from os.path import basename, abspath, isfile
 import vlc
 
+from config import cfg
 from rigdio_except import UnloadSong, PlayNextSong
 from rigdio_util import timeToSeconds
-
-fadeTime = 3
 
 class Condition:
    null = "nullCond"
@@ -314,9 +313,11 @@ class StartInstruction (Instruction):
    def run (self, player):
       player.song.set_time(self.startTime)
 
-   def __str__(self):
-      return "start {}".format(self.rawTime)
-   __repr__ = __str__
+   def type (self):
+      return "start"
+
+   def tokens(self):
+      return [self.rawTime]
 
 class PauseInstruction (Instruction):
    desc = """Specify action taken when goalhorn is paused."""
@@ -343,9 +344,11 @@ class PauseInstruction (Instruction):
          if self.command == "restart":
             player.song.set_time(player.startTime)
 
-   def __str__(self):
-      return "pause {}".format(self.command)
-   __repr__ = __str__
+   def type (self):
+      return "pause"
+
+   def tokens (self):
+      return [self.command]
 
 class EndInstruction (Instruction):
    desc = """Specify action taken when goalhorn reaches the end."""
@@ -367,9 +370,11 @@ class EndInstruction (Instruction):
       elif self.command == "next":
          raise PlayNextSong
 
-   def __str__(self):
-      return "end {}".format(self.command)
-   __repr__ = __str__
+   def type (self):
+      return "end"
+
+   def tokens(self):
+      return [self.command]
 
 conditions = {
    "goals" : GoalCondition,
@@ -549,7 +554,7 @@ def fadeOut (player):
       if player.fade == None:
          break
       player.song.audio_set_volume(i)
-      sleep(fadeTime/100)
+      sleep(cfg["fade"]/100)
       i -= 1
    for instruction in player.instructionsPause:
       instruction.run(player)
