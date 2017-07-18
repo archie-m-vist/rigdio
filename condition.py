@@ -226,6 +226,12 @@ class OnceCondition (Condition):
          return True
       raise UnloadSong
 
+   def type (self):
+      return "once"
+
+   def tokens (self):
+      return []
+
 class MetaCondition (Condition):
    def __init__ (self, tokens, **kwargs):
       super().__init__(**kwargs)
