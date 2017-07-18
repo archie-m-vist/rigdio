@@ -59,4 +59,5 @@ class GameState:
    def clear (self):
       self.home_score = 0
       self.away_score = 0
-      self.scorers = {}
+      self.home_scorers = {}
+      self.away_scorers = {}
