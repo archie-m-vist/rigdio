@@ -199,10 +199,10 @@ class Editor (Frame):
       b1, b2 = None, None
       name = self.player.get()
       if index != 0:
-         b1 = Button(self.songMenu,text="+",command=lambda: self.moveSongUp(index))
+         b1 = Button(self.songMenu,text="▲",command=lambda: self.moveSongUp(index))
          b1.grid(row=index+Editor.firstConditionRow,column=0)
       if index != len(self.players[name])-1:
-         b2 = Button(self.songMenu,text="-",command=lambda: self.moveSongDown(index))
+         b2 = Button(self.songMenu,text="▼",command=lambda: self.moveSongDown(index))
          b2.grid(row=index+Editor.firstConditionRow,column=1)
       self.songButtons.append((b1,b2))
 
