@@ -68,6 +68,7 @@ class Rigdio (Frame):
       Label(gameTypeMenu, text="Match Type").pack()
       gametype = StringVar()
       gametype.set("Group")
+      self.game.gametype = gametype.get().lower()
       menu = OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType)
       setMaxWidth(gametypes,menu)
       menu.pack()
@@ -78,7 +79,10 @@ class Rigdio (Frame):
 
    def loadFile (self, home = True):
       f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
-      if isfile(f):
+      if f == "":
+         # do nothing if cancel was pressed
+         return
+      elif isfile(f):
          print("Loading music instructions from {}.".format(f))
          tmusic, tname = parse(f,home=home)
          # copy anthem to victory anthem if none given
