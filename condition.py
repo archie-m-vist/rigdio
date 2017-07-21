@@ -234,12 +234,14 @@ class OnceCondition (Condition):
 class MetaCondition (Condition):
    def __init__ (self, tokens, **kwargs):
       super().__init__(**kwargs)
+      self.sub = []
       temp = (" ".join(tokens)).split(",")
+      print("TEMP:",temp)
       for item in temp:
-         self.sub.append(ConditionList.buildCondition(self.pname,self.tname,item.split(" "),self.home))
+         self.sub.append(ConditionList.buildCondition(pname=self.pname,tname=self.tname,tokens=item.split(" "),home=self.home))
 
    def tokens (self):
-      return ",".join([str(x) for x in self.subconditions])
+      return ",".join([str(x) for x in self.subconditions()])
 
    def subconditionCount (self):
       raise NotImplementedError
@@ -254,7 +256,7 @@ class NotCondition (MetaCondition):
       if condition is not None:
          kwargs["tokens"] = [condition.type, *condition.tokens()]
          home = condition.home
-      super().__init__(**kwargs)
+      super().__init__(tokens=tokens,**kwargs)
 
    def type (self):
       return "not"

@@ -13,7 +13,7 @@ class ConditionEditor (Frame):
    def __init__ (self, master, cond, conditionType, build = True):
       super().__init__(master)
       self.conditionType = conditionType
-      if cond == None:
+      if cond == None or cond.type() != conditionType.type(None):
          temp = self.default()
       else:
          temp = cond.tokens()
@@ -176,7 +176,7 @@ class OpponentConditionEditor (ConditionEditor):
    def build (self, tokens):
       Label(self, text="Opponent is Any Of").grid(row=0,column=0,sticky=W)
       self.fields.append(StringVar())
-      self.fields[0].set(str(tokens[0]))
+      self.fields[0].set(str(" ".join(tokens)))
       Entry(self, textvariable=self.fields[0]).grid(row=0,column=1,sticky=W+E)
 
    def tokens (self):
@@ -260,11 +260,13 @@ class MetaConditionEditor (ConditionEditor):
    def tokens (self):
       temp = []
       for sc in self.subconditions[:-1]:
+         temp.append(sc.type())
          temp.extend(sc.tokens())
          temp.append(",")
       if len(self.subconditions) > 0:
+         temp.append(self.subconditions[-1].type())
          temp.extend(self.subconditions[-1].tokens())
-      print(temp)
+      print("TOKENS FROM MCE:",temp)
       return temp
 
    def build (self, tokens):
@@ -284,6 +286,7 @@ class MetaConditionEditor (ConditionEditor):
 
 class NotConditionEditor (MetaConditionEditor):
    def __init__ (self, master, cond):
+      self.button = None
       super().__init__(master,cond,NotCondition)
 
    def default (self):
