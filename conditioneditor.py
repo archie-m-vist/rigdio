@@ -316,6 +316,7 @@ class StartInstructionEditor (ConditionEditor):
    def build (self, tokens):
       Label(self, text="Start Playback At").grid(row=2,column=0,sticky=W)
       self.fields.append(StringVar())
+      self.fields[0].set(tokens[0])
       timeEntry = Entry(self, textvariable=self.fields[0])
       timeEntry.grid(row=2,column=1,sticky=W+E)
 
@@ -323,6 +324,7 @@ class StartInstructionEditor (ConditionEditor):
       if timeToSeconds(self.fields[0].get()) is None:
          messagebox.showwarning("Input Error", "Start instruction requires a time formatted as any of: day:hour:min:sec, hour:min:sec, min:sec, or sec.")
          return False
+      return True
 
 class PauseInstructionEditor (ConditionEditor):
    def __init__ (self, master, cond):
