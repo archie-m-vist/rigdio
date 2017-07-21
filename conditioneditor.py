@@ -58,7 +58,7 @@ class ConditionEditor (Frame):
 
       You never need to override this.
       """
-      return self.conditionType(self.tokens())
+      return self.conditionType(tokens=self.tokens())
 
    def getEditor (ctype):
       editors = {

@@ -164,7 +164,7 @@ class FirstCondition (Condition):
 class LeadCondition (GoalCondition):
    desc = """Plays if the goal difference (yourteam - theirteam) meets the given condition."""
 
-   def __init__ (**kwargs):
+   def __init__ (self, **kwargs):
       # pass tokens up to GoalCondition, the only difference in handling is in args()
       super().__init__(**kwargs)
 
