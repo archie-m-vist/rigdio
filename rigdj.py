@@ -33,7 +33,7 @@ class SongRow:
       self.newConditionButton = Button(self.master, text="New Condition", command=self.newCondition)
       self.conditionButtons = []
       for index in range(len(self.clist)):
-         button = Button(self.master, text=str(self.clist[index]), command=lambda: self.editCondition(index))
+         button = Button(self.master, text=str(self.clist[index]), command=(lambda copy=index: self.editCondition(copy)))
          self.conditionButtons.append(button)
 
    def draw (self, row):

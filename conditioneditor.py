@@ -251,7 +251,7 @@ class MatchConditionEditor (ConditionEditor):
 class MetaConditionEditor (ConditionEditor):
    def __init__ (self, master, cond, conditionType):
       super().__init__(master,cond,conditionType,False)
-      if cond == None:
+      if cond == None or cond.type() != conditionType.type(None):
          self.subconditions = self.default()
       else:
          self.subconditions = cond.subconditions()
@@ -266,7 +266,6 @@ class MetaConditionEditor (ConditionEditor):
       if len(self.subconditions) > 0:
          temp.append(self.subconditions[-1].type())
          temp.extend(self.subconditions[-1].tokens())
-      print("TOKENS FROM MCE:",temp)
       return temp
 
    def build (self, tokens):
@@ -279,7 +278,7 @@ class MetaConditionEditor (ConditionEditor):
       condition = self.subconditions[index]
       try:
          self.subconditions[index] = ConditionDialog(self.master,condition,condition == None).condition
-         print(self.subconditions)
+         print("subconditions:",self.subconditions)
       except Exception as e:
          print(e)
       self.update()

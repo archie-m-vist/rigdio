@@ -51,7 +51,7 @@ class Condition:
       raise NotImplementedError("Condition subclass must override tokens().")
 
    def __str__ (self):
-      return "{} {}".format(self.type()," ".join(self.tokens()))
+      return "{} {}".format(self.type()," ".join(self.tokens())).strip()
    __repr__ = __str__
 
 class ArithCondition (Condition):
@@ -236,15 +236,12 @@ class MetaCondition (Condition):
       super().__init__(**kwargs)
       self.sub = []
       temp = (" ".join(tokens)).split(",")
-      print("TEMP:",temp)
       for item in temp:
          self.sub.append(ConditionList.buildCondition(pname=self.pname,tname=self.tname,tokens=item.split(" "),home=self.home))
 
    def tokens (self):
-      return ",".join([str(x) for x in self.subconditions()])
-
-   def subconditionCount (self):
-      raise NotImplementedError
+      result = ",".join([str(x) for x in self.subconditions()])
+      return result.split(" ")
 
    def subconditions (self):
       return self.sub

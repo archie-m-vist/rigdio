@@ -40,7 +40,9 @@ def parse (filename, load = True, home = True):
       if len(line) == 0 or line[0] == "#":
          continue
       # split up line by ;
-      data = line.split(';')  
+      data = line.split(';')
+      # trim whitespace from ends of strings
+      data = [x.strip() for x in data]
       player = data[0] # name of player
       if player not in output:
          output[player] = []
