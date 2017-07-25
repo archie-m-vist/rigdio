@@ -180,6 +180,14 @@ class EveryConditionEditor (ConditionEditor):
       countEntry.grid(row=0,column=1,sticky=W)
       Label(self, text="Goals By Player").grid(row=0,column=2,sticky=W)
 
+   def validate (self):
+      try: 
+         int(self.fields[0].get())
+      except:
+         messagebox.showwarning("Input Error", "Lead instruction must be compared to an integer.")
+         return False
+      return True
+
 class OpponentConditionEditor (ConditionEditor):
    def __init__ (self, master, cond):
       ConditionEditor.__init__(self,master,cond,OpponentCondition)
