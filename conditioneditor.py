@@ -131,7 +131,7 @@ class GoalConditionEditor (ConditionEditor):
       try: 
          int(self.fields[1].get())
       except:
-         messagebox.showwarning("Input Error", "Goals instruction must be compared to an integer.")
+         messagebox.showwarning("Input Error", "Goals condition must be compared to an integer.")
          return False
       return True
 
@@ -161,7 +161,7 @@ class LeadConditionEditor (ConditionEditor):
       try: 
          int(self.fields[1].get())
       except:
-         messagebox.showwarning("Input Error", "Lead instruction must be compared to an integer.")
+         messagebox.showwarning("Input Error", "Lead condition must be compared to an integer.")
          return False
       return True
 
@@ -184,7 +184,7 @@ class EveryConditionEditor (ConditionEditor):
       try: 
          int(self.fields[0].get())
       except:
-         messagebox.showwarning("Input Error", "Lead instruction must be compared to an integer.")
+         messagebox.showwarning("Input Error", "Every condition must be compared to an integer.")
          return False
       return True
 
