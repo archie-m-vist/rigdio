@@ -171,11 +171,11 @@ class Editor (Frame):
 
    def save4ccm (self):
       if self.filename is None:
-         self.filename = filedialog.asksaveasfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
+         self.filename = filedialog.asksaveasfilename(defaultextension=".4ccm", filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
       self.writefile(self.filename)
 
    def save4ccmas (self):
-      self.filename = filedialog.asksaveasfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
+      self.filename = filedialog.asksaveasfilename(defaultextension=".4ccm", filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
       self.writefile(self.filename)
 
    def updatePlayerMenu (self):
