@@ -39,9 +39,22 @@ class ConditionEditor (Frame):
       Converts the self.fields array to the tokens passed to the conditionType constructor.
 
       It's not normally necessary to override this, as long as each field represents exactly one
-      token.
+      token. [] will be automatically added to any tokens containing spaces.
       """
-      return [str(x.get()) for x in self.fields]
+      output = []
+      for field in self.fields:
+         token = str(field.get())
+         print(token)
+         # escape special characters
+         if "[" in token:
+            token = token.replace("[","\\[")
+         if "]" in token:
+            token = token.replace("]","\\]")
+         # escape strings
+         if " " in token:
+            token = "[{}]".format(token)
+         output.append(token)
+      return output
 
    def validate (self):
       """
@@ -72,6 +85,7 @@ class ConditionEditor (Frame):
          "home" : lambda master,cond: EmptyConditionEditor(master,cond,HomeCondition),
          "once" : lambda master,cond: EmptyConditionEditor(master,cond,OnceCondition),
          "every" : EveryConditionEditor,
+         "mostgoals" : MostGoalsConditionEditor,
          # meta conditions
          "not" : NotConditionEditor,
          # instructions
@@ -247,6 +261,27 @@ class MatchConditionEditor (ConditionEditor):
             self.buttons[key].select()
          else:
             self.buttons[key].deselect()
+
+class MostGoalsConditionEditor (ConditionEditor):
+   def __init__ (self, master, cond):
+      super().__init__(master,cond,MostGoalsCondition)
+
+   def default (self):
+      return []
+
+   def build (self, tokens):
+      self.fields.append(StringVar())
+      if len(tokens) > 0:
+         self.fields[0].set(tokens[0])
+      Label(self, text="Player to Check").grid(row=0,column=0)
+      Entry(self, textvariable=self.fields[0]).grid(row=0,column=1)
+
+   def tokens (self):
+      if self.fields[0].get() == "":
+         return []
+      else:
+         return super().tokens()
+      
 
 class MetaConditionEditor (ConditionEditor):
    def __init__ (self, master, cond, conditionType):

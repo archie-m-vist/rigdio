@@ -7,8 +7,8 @@ from condition import ConditionList, ConditionPlayer, loadsong
 # reserved names
 reserved = set(['anthem', 'victory', 'goal', 'name'])
 
-"""Parses a music export file and loads it into memory."""
 def parse (filename, load = True, home = True):
+   """Parses a music export file and loads it into memory."""
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
    output = {}

@@ -49,6 +49,18 @@ class GameState:
       else:
          return self.home_score
 
+   def team_scorers (self, home):
+      if home:
+         return self.home_scorers
+      else:
+         return self.away_scorers
+
+   def opponent_scorers (self, home):
+      if home:
+         return self.away_scorers
+      else:
+         return self.home_scorers
+
    def player_goals (self, pname, home):
       scorers = self.home_scorers if home else self.away_scorers
       if pname in scorers:

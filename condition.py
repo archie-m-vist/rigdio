@@ -135,7 +135,13 @@ class OpponentCondition (Condition):
 
    def __init__(self, tokens, **kwargs):
       super().__init__(**kwargs)
-      self.others = [x.lower() for x in tokens]
+      self.others = []
+      for token in tokens:
+         if " " in token:
+            self.others.extend(token.split())
+         else:
+            self.others.append(token)
+
 
    def check(self,gamestate):
       return gamestate.opponent_name(self.home) in self.others
@@ -230,6 +236,34 @@ class OnceCondition (Condition):
 
    def tokens (self):
       return []
+
+class MostGoalsCondition (Condition):
+   desc = """Plays when either this player, or the specified player, has scored the most goals for this team in the match."""
+
+   def __init__(self, tokens, pname=None, **kwargs):
+      if len(tokens) > 0:
+         super().__init__(pname=tokens[0],**kwargs)
+         self.specified = tokens[0]
+      else:
+         super().__init__(pname=pname,**kwargs)
+         self.specified = None
+
+   def check (self, gamestate):
+      scorers = gamestate.team_scorers(self.home)
+      mygoals = gamestate.player_goals(self.pname,self.home)
+      for player in scorers:
+         if mygoals < scorers[player]:
+            return False
+      return True
+
+   def tokens (self):
+      if self.specified is None:
+         return []
+      else:
+         return [self.specified]
+
+   def type (self):
+      return "mostgoals"
 
 class MetaCondition (Condition):
    def __init__ (self, tokens, **kwargs):
@@ -380,16 +414,42 @@ conditions = {
    "comeback" : ComebackCondition,
    "first" : FirstCondition,
    "opponent" : OpponentCondition,
-   "not" : NotCondition,
    "lead" : LeadCondition,
    "match" : MatchCondition,
    "home" : HomeCondition,
    "once" : OnceCondition,
+   "mostgoals" : MostGoalsCondition,
+   "not" : NotCondition,
    "every" : EveryCondition,
    "start" : StartInstruction,
    "pause" : PauseInstruction,
    "end" : EndInstruction
 }
+
+def processTokens (tokenStr):
+   data = tokenStr.split()
+   print(data)
+   i = 0
+   while i < len(data):
+      # escape character
+      if data[i][0] == "\\":
+         data[i] = data[i][1:]
+         print(data[i])
+      # quoted string semantics
+      elif data[i][0] == "[":
+         data[i] = list(data[i])
+         while data[i+1][-1] != "]" or data[i+1][-2] == "\\":
+            temp = list(data.pop(i+1))
+            # remove escapes on end of string
+            if temp[-1] == "]" and temp[-2] == "\\":
+               temp.pop(-2)
+            data[i].append(" ")
+            data[i].extend(temp)
+         data[i].append(" ")
+         data[i].extend(list(data.pop(i+1)))
+         data[i] = "".join(data[i][1:-1]) # remove the []
+      i += 1
+   return data
 
 class ConditionList:
    def buildCondition(tokens, **kwargs):
@@ -411,8 +471,8 @@ class ConditionList:
       self.startTime = 0
       self.endType = "loop"
       self.pauseType = "continue"
-      for token in data:
-         tokens = token.split()
+      for tokenStr in data:
+         tokens = processTokens(tokenStr)
          condition = ConditionList.buildCondition(tokens, pname=self.pname, tname=self.tname, home=self.home)
          if condition.isInstruction():
             self.instructions.append(condition)
