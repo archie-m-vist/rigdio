@@ -101,3 +101,8 @@ class TeamMenu (Frame):
       for i in range(len(self.playerNames)):
          name = self.playerNames[i]
          PlayerButtons(self, self.players[name], self.home, self.game).insert(startRow+i+2)
+
+   def clear (self):
+      for player in self.players.keys():
+         for clist in self.players[player]:
+            clist.disable()

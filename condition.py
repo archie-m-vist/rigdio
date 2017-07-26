@@ -605,7 +605,7 @@ class ConditionPlayer (ConditionList):
 
    def disable (self):
       self.song.stop()
-      ConditionList.disable(self)
+      super().disable()
 
 def fadeOut (player):
    i = 100

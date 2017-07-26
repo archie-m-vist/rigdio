@@ -94,12 +94,14 @@ class Rigdio (Frame):
             self.game.home_name = tname
             if self.home is not None:
                self.home.grid_forget()
+               self.home.clear()
             self.home = TeamMenu(self, tname, tmusic, True, self.game)
             self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
          else:
             self.game.away_name = tname
             if self.away is not None:
                self.away.grid_forget()
+               self.away.clear()
             self.away = TeamMenu(self, tname, tmusic, False, self.game)
             self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
          self.scoreWidget.updateLabels()
