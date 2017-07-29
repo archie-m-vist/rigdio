@@ -13,6 +13,7 @@ from gamestate import GameState
 from songgui import *
 from version import rigdio_version as version
 from rigdj_util import setMaxWidth
+from rigdio_ui import *
 
 from logger import startLog
 if __name__ == '__main__':
@@ -53,8 +54,8 @@ class Rigdio (Frame):
       self.home = None
       self.away = None
       # file menu
-      Button(self, text="Load Home Team", command=self.loadFile).grid(row=0, column=0)
-      Button(self, text="Load Away Team", command=lambda: self.loadFile(False)).grid(row=0, column=2)
+      Button(self, text="Load Home Team", command=self.loadFile, bg=homeColor).grid(row=0, column=0)
+      Button(self, text="Load Away Team", command=lambda: self.loadFile(False), bg=awayColor).grid(row=0, column=2)
       # score widget
       self.scoreWidget = ScoreWidget(self, self.game)
       self.game.widget = self.scoreWidget

@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.messagebox as messagebox
 from rigparse import reserved
 from rigdio_except import UnloadSong
+from rigdio_ui import *
 
 class PlayerButtons ():
    def __init__ (self, frame, clists, home, game, text = None):
@@ -20,8 +21,8 @@ class PlayerButtons ():
          self.reserved = False
       else:
          self.reserved = True
-      self.listButton = Button(frame, text="?", command=self.showSongs)
-      self.playButton = Button(frame, text=self.text, command=self.playSong)
+      self.listButton = Button(frame, text="?", command=self.showSongs, bg=homeColor if self.home else awayColor)
+      self.playButton = Button(frame, text=self.text, command=self.playSong, bg=homeColor if self.home else awayColor)
 
    def playSong (self):
       if self.song is None:
@@ -63,8 +64,8 @@ class PlayerButtons ():
       messagebox.showinfo(title, text)
 
    def insert (self, row):
-      self.listButton.grid(row=row,column=0,sticky=N+S)
-      self.playButton.grid(row=row,column=1,sticky=E+W)
+      self.listButton.grid(row=row,column=0,sticky=N+S, padx=2, pady=5)
+      self.playButton.grid(row=row,column=1,sticky=E+W, padx=2, pady=5)
 
 class TeamMenu (Frame):
    def __init__ (self, master, tname, players, home, game):
