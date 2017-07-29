@@ -9,8 +9,23 @@ class GameState:
       self.widget = widget
       self.gametype = "standard"
 
+   def undoLast (self):
+      if self.lastPname == None:
+         return
+      
+      if self.lastHome:
+         self.home_score -= 1
+         self.home_scorers[self.lastPname] -= 1
+      else:
+         self.away_score -= 1
+         self.away_scorers[self.lastPname] -= 1
+      self.lastPname = None
+      self.widget.updateScore()
+
    def score (self, pname, home):
       print("Goal scored by {} on {} team.".format(pname, "home" if home else "away"))
+      self.lastPname = pname
+      self.lastHome = home
       if home:
          self.home_score += 1
          if pname in self.home_scorers:

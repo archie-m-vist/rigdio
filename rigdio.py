@@ -62,6 +62,7 @@ class Rigdio (Frame):
       self.scoreWidget.grid(row=0, column=1)
       # game type selector
       self.initGameTypeMenu().grid(row=1,column=1)
+      Button(self, text="Undo Last Goal", command=self.game.undoLast).grid(row=2, column = 1)
 
    def initGameTypeMenu (self):
       gameTypeMenu = Frame(self)
