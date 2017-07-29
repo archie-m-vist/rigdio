@@ -3,7 +3,7 @@ from time import sleep
 from os.path import basename, abspath, isfile
 import vlc
 
-from config import cfg
+from config import settings
 from rigdio_except import UnloadSong, PlayNextSong
 from rigdio_util import timeToSeconds
 
@@ -613,7 +613,7 @@ def fadeOut (player):
       if player.fade == None:
          break
       player.song.audio_set_volume(i)
-      sleep(cfg["fade"]/100)
+      sleep(settings.fade/100)
       i -= 1
    for instruction in player.instructionsPause:
       instruction.run(player)

@@ -2,15 +2,12 @@ import yaml
 from logger import startLog
 
 defaults = dict(
-   fade=2
+   fade=2,
+   colours=dict(
+      home='#e0e0fc',
+      away='#ffe0dd'
+   )
 )
-
-try:
-   with open("rigdio.yml") as cfgfile:
-      cfg = yaml.load(cfgfile)
-      checkCfg(cfg)
-except: # error loading config file, use defaults
-   cfg = defaults
 
 def genCfg ():
    try:
@@ -20,13 +17,32 @@ def genCfg ():
       return
    yaml.dump(defaults, file, default_flow_style=False)
 
-def checkCfg ():
-   startLog("rigdio.log")
-   try: 
-      cfg['fade'] = int(cfg['fade'])
-   except:
-      print("rigdio.yml error: fade must be integer. using default value.")
-      cfg['fade'] = defaults['fade']
+class ConfigValues:
+   def __init__ (self):
+      startLog("rigdio.log")
+      self.loadCfg()   
+
+   def checkCfg (self):
+      try: 
+         self.cfg['fade'] = float(self.cfg['fade'])
+      except:
+         print("rigdio.yml error: fade must be number. using default value.")
+         self.cfg['fade'] = defaults['fade']
+
+   def loadCfg (self):
+      try:
+         with open("rigdio.yml") as cfgfile:
+            self.cfg = yaml.load(cfgfile)
+            self.checkCfg()
+      except Exception as e: # error loading config file, use defaults
+         print("Error loading config file: {}".format(str(e)))
+         print("Default values will be used.")
+         self.cfg = defaults
+
+   def __getattr__ (self, key):
+      return self.cfg[key]
+
+settings = ConfigValues()
 
 if __name__ == '__main__':
    genCfg()

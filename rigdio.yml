@@ -1,1 +1,8 @@
+# colours of UI elements
+colours:
+  # away team colour
+  away: '#ffe0dd'
+  # home team colour
+  home: '#e0e0fc'
+# number of seconds to fade out
 fade: 2

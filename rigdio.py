@@ -5,7 +5,7 @@ from tkinter import *
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 
-from config import genCfg
+from config import genCfg, settings
 
 from condition import MatchCondition
 from rigparse import parse
@@ -13,7 +13,6 @@ from gamestate import GameState
 from songgui import *
 from version import rigdio_version as version
 from rigdj_util import setMaxWidth
-from rigdio_ui import *
 
 from logger import startLog
 if __name__ == '__main__':
@@ -54,8 +53,8 @@ class Rigdio (Frame):
       self.home = None
       self.away = None
       # file menu
-      Button(self, text="Load Home Team", command=self.loadFile, bg=homeColor).grid(row=0, column=0)
-      Button(self, text="Load Away Team", command=lambda: self.loadFile(False), bg=awayColor).grid(row=0, column=2)
+      Button(self, text="Load Home Team", command=self.loadFile, bg=settings.colours["home"]).grid(row=0, column=0)
+      Button(self, text="Load Away Team", command=lambda: self.loadFile(False), bg=settings.colours["away"]).grid(row=0, column=2)
       # score widget
       self.scoreWidget = ScoreWidget(self, self.game)
       self.game.widget = self.scoreWidget

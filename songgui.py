@@ -2,7 +2,7 @@ from tkinter import *
 import tkinter.messagebox as messagebox
 from rigparse import reserved
 from rigdio_except import UnloadSong
-from rigdio_ui import *
+from config import settings
 
 class PlayerButtons ():
    def __init__ (self, frame, clists, home, game, text = None):
@@ -21,8 +21,8 @@ class PlayerButtons ():
          self.reserved = False
       else:
          self.reserved = True
-      self.listButton = Button(frame, text="?", command=self.showSongs, bg=homeColor if self.home else awayColor)
-      self.playButton = Button(frame, text=self.text, command=self.playSong, bg=homeColor if self.home else awayColor)
+      self.listButton = Button(frame, text="?", command=self.showSongs, bg=settings.colours["home" if self.home else "away"])
+      self.playButton = Button(frame, text=self.text, command=self.playSong, bg=settings.colours["home" if self.home else "away"])
 
    def playSong (self):
       if self.song is None:
