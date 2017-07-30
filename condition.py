@@ -428,13 +428,11 @@ conditions = {
 
 def processTokens (tokenStr):
    data = tokenStr.split()
-   print(data)
    i = 0
    while i < len(data):
       # escape character
       if data[i][0] == "\\":
          data[i] = data[i][1:]
-         print(data[i])
       # quoted string semantics
       elif data[i][0] == "[":
          data[i] = list(data[i])
@@ -460,7 +458,7 @@ class ConditionList:
       except KeyError:
          raise ValueError("condition/instruction {} not recognised.".format(tokens[0]))
 
-   def __init__(self, pname, tname, data, songname, home = True):
+   def __init__(self, pname = "NOPLAYER", tname = "NOTEAM", data = [], songname = "New Song", home = True):
       self.pname = pname
       self.tname = tname
       self.home = home
@@ -563,7 +561,7 @@ class ConditionPlayer (ConditionList):
    
    def instruct (self):
       for instruction in self.instructions:
-         print(instruction)
+         print("Preparing {} instruction".format(instruction))
          instruction.prep(self)
 
    def reloadSong (self):
@@ -584,6 +582,10 @@ class ConditionPlayer (ConditionList):
          self.firstPlay = False
       if len(self.instructionsEnd) > 0:
          self.endChecker = threading.Thread(target=self.checkEnd)
+
+   def adjustVolume (self, value):
+      self.maxVolume = int(value)
+      self.song.audio_set_volume(self.maxVolume)
 
    def pause (self):
       if self.isGoalhorn:
@@ -620,5 +622,5 @@ def fadeOut (player):
    player.song.pause()
    if player.song.get_media().get_state() == vlc.State.Ended:
       player.reloadSong()
-   player.song.audio_set_volume(100)
+   player.song.audio_set_volume(player.maxVolume)
    player.fade = None
