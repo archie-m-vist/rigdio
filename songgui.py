@@ -14,6 +14,7 @@ class PlayerButtons ():
       # derived information
       self.song = None
       self.pname = clists[0].pname
+      self.futureVolume = None
       # text and buttons
       ## check if text is none (i.e., it's a reserved keyword with an overridden name)
       if self.text is None:
@@ -23,6 +24,14 @@ class PlayerButtons ():
          self.reserved = True
       self.listButton = Button(frame, text="?", command=self.showSongs, bg=settings.colours["home" if self.home else "away"])
       self.playButton = Button(frame, text=self.text, command=self.playSong, bg=settings.colours["home" if self.home else "away"])
+      self.volume = Scale(frame, from_=0, to=100, orient=HORIZONTAL, command=self.adjustVolume, showvalue=0)
+      self.volume.set(100)
+
+   def adjustVolume (self, value):
+      if self.song is not None:
+         self.song.adjustVolume(value)
+      else:
+         self.futureVolume = value
 
    def playSong (self):
       if self.song is None:
@@ -39,6 +48,9 @@ class PlayerButtons ():
                continue
             if checked:
                self.song = self.clists[i]
+               if self.futureVolume is not None:
+                  self.song.adjustVolume(self.futureVolume)
+                  self.futureVolume = None
                print("Playing",self.song.songname)
                self.song.play()
                self.playButton.configure(relief=SUNKEN)
@@ -64,8 +76,9 @@ class PlayerButtons ():
       messagebox.showinfo(title, text)
 
    def insert (self, row):
-      self.listButton.grid(row=row,column=0,sticky=N+S, padx=2, pady=5)
-      self.playButton.grid(row=row,column=1,sticky=E+W, padx=2, pady=5)
+      self.listButton.grid(row=row,column=0,sticky=N+S, padx=2, pady=(5,0))
+      self.playButton.grid(row=row,column=1,sticky=E+W, padx=2, pady=(5,0))
+      self.volume.grid(row=row+1,column=0,columnspan=2,sticky=E+W, pady=(0,5))
 
 class TeamMenu (Frame):
    def __init__ (self, master, tname, players, home, game):
@@ -82,7 +95,7 @@ class TeamMenu (Frame):
       # button for anthem
       self.buildAnthemButtons()
       # buttons for victory anthems
-      startRow = self.buildVictoryAnthemMenu() + 1
+      startRow = self.buildVictoryAnthemMenu() + 2
       # buttons for goalhorns
       self.buildGoalhornMenu(startRow)
 
@@ -91,8 +104,8 @@ class TeamMenu (Frame):
 
    def buildVictoryAnthemMenu (self):
       if "victory" in self.players:
-         PlayerButtons(self, self.players["victory"], self.home, self.game, "Victory Anthem").insert(1)
-         return 1
+         PlayerButtons(self, self.players["victory"], self.home, self.game, "Victory Anthem").insert(2)
+         return 2
       else:
          return 0
 
@@ -101,7 +114,7 @@ class TeamMenu (Frame):
       PlayerButtons(self, self.players["goal"], self.home, self.game, "Standard Goalhorn").insert(startRow+1)
       for i in range(len(self.playerNames)):
          name = self.playerNames[i]
-         PlayerButtons(self, self.players[name], self.home, self.game).insert(startRow+i+2)
+         PlayerButtons(self, self.players[name], self.home, self.game).insert(startRow+2*i+3)
 
    def clear (self):
       for player in self.players.keys():
