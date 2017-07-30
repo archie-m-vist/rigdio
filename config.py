@@ -23,6 +23,9 @@ class ConfigValues:
       self.loadCfg()   
 
    def checkCfg (self):
+      for key in defaults:
+         if key not in self.cfg:
+            self.cfg[key] = defaults[key]
       try: 
          self.cfg['fade'] = float(self.cfg['fade'])
       except:
