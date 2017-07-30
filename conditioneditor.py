@@ -345,11 +345,16 @@ class NotConditionEditor (MetaConditionEditor):
       self.button.pack()
 
    def validate (self):
-      if not self.subconditions[0].isInstruction():
-         return True
-      else:
+      if self.subconditions[0] is None:
+         messagebox.showwarning("Input Error", "Not condition requires a subcondition.")
+         return False
+      elif self.subconditions[0].isInstruction():
          messagebox.showwarning("Input Error", "Not condition cannot be applied to an Instruction.")
          return False
+      elif self.subconditions[0].type() == "not":
+         messagebox.showwarning("Input Error", "This is completely unnecessary.")
+         return False
+      return True
 
 class StartInstructionEditor (ConditionEditor):
    def __init__ (self, master, cond):
