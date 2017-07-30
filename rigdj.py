@@ -1,92 +1,258 @@
-from tkinter import *
-import tkinter.filedialog as filedialog
-import tkinter.messagebox as messagebox
-from tkinter.simpledialog import Dialog
-import tkinter.font
-from condition import *
-from conditioneditor import ConditionDialog
-from rigparse import parse
-from rigdj_util import *
 from version import rigdj_version as version
-
 from logger import startLog
 if __name__ == '__main__':
    startLog("rigdj.log")
    print("rigDJ {}".format(version))
 
-# row usage
-#  0 - load/save/save as
-#  1 - team name
-#  2 - player information
-#  3 - headings
-# 4+ - songs and conditions
+from tkinter import *
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
+from tkinter.simpledialog import Dialog
+import tkinter.font
+
+from condition import *
+from conditioneditor import ConditionDialog
+
+from rigdj_util import *
+from rigparse import parse, reserved
+
+specialNames = set(["Goalhorn", "Anthem", "Victory Anthem"])
+
+class ConditionButton (Button):
+   def __init__ (self, songrow, index, **kwargs):
+      """
+         Constructs a ConditionButton.
+
+         master must be a SongRow object.
+      """
+      if "command" in kwargs or "text" in kwargs:
+         raise ValueError("Cannot specify command or text for ConditionButton.")
+
+      self.cond = songrow[index] if index < len(songrow) else None
+      self.index = index
+      self.songrow = songrow
+
+      txt = str(self.cond) if self.cond is not None else "Add Condition"
+      super().__init__(self.songrow.master, command=self.edit, text=txt, **kwargs)
+
+   def edit (self):
+      temp = ConditionDialog(self.master,self.cond,self.cond==None).condition
+      if temp is not None:
+         if temp == -1:
+            # delete condition
+            self.songrow.pop(self.index)
+         else:
+            if self.index < len(self.songrow):
+               self.songrow[self.index] = temp
+            else:
+               self.songrow.append(temp)
+            self.cond = temp
+         self.songrow.update()
 
 class SongRow:
-   def __init__ (self, editor, clist):
-      self.editor = editor
-      self.master = self.editor.songMenu
+   def __init__ (self, songed, row, clist):
+      self.master = songed
       self.clist = clist
-      self.songName = StringVar()
-      self.songNameEntry = Entry(self.master, textvariable = self.songName)
-      self.songNameEntry.insert(0,self.clist.songname)
-      self.songNameButton = Button(self.master, text="Open File", command=self.findSong)
-      self.newConditionButton = Button(self.master, text="New Condition", command=self.newCondition)
+      self.row = row
+      self.strRow = StringVar()
+      self.baseElements = self.buildBaseElements()
       self.conditionButtons = []
-      for index in range(len(self.clist)):
-         button = Button(self.master, text=str(self.clist[index]), command=(lambda copy=index: self.editCondition(copy)))
-         self.conditionButtons.append(button)
+      self.elements = self.baseElements
+      # initialise filename
+      self.songNameEntry.insert(0,clist.songname)
+      self.songNameEntry.xview_moveto(1)
 
-   def draw (self, row):
-      self.songNameButton.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu)
-      self.songNameEntry.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+1)
-      self.newConditionButton.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+2)
-      for i in range(len(self.conditionButtons)):
-         button = self.conditionButtons[i]
-         button.grid(row = row+Editor.firstConditionRow, column = Editor.startSongMenu+3+i)
+   def buildBaseElements (self):
+      output = []
+      output.append(Button(self.master,text="▼", command=lambda: self.master.moveSongDown(self.row-1)))
+      output.append(Label(self.master,textvariable=self.strRow))
+      output.append(Button(self.master,text="▲", command=lambda: self.master.moveSongUp(self.row-1)))
+      output.append(Label(self.master,text=" "))
+      output.append(Button(self.master,text="Open"))
+      self.songNameEntry = Entry(self.master, width=50)
+      output.append(self.songNameEntry)
+      output.append(Label(self.master,text=" "))
+      return output
 
    def clear (self):
-      self.songNameEntry.grid_forget()
-      self.songNameButton.grid_forget()
-      self.newConditionButton.grid_forget()
-      for button in self.conditionButtons:
-         button.grid_forget()
-      self.clist.songname = self.songName.get()
+      for element in self.elements:
+         element.grid_forget()
 
-   def findSong (self):
-      songname = filedialog.askopenfilename(filetypes = (("Audio Files","*.mp3 *.wav *.ogg *.flac"), ("All Files", "*")))
-      self.songNameEntry.delete(0,END)
-      self.songNameEntry.insert(0,songname)
-      self.songName.set(songname)
-      self.clist.songname = songname
+   def update (self):
+      self.strRow.set(str(self.row))
+      self.clist.songname = self.songNameEntry.get()
+      for element in self.elements:
+         element['state'] = 'normal'
+         element.grid_forget()
+      
+      # disable arrows if the row is inappropriate
+      if self.row == 1:
+         self.baseElements[2]['state'] = 'disabled'
+      if self.row == self.master.count():
+         self.baseElements[0]['state'] = 'disabled'
 
-   def newCondition (self):
-      self.editCondition(len(self.clist))
+      # construct condition buttons
+      self.conditionButtons = [ConditionButton(self,index) for index in range(len(self.clist))]
+      self.conditionButtons.append(ConditionButton(self,len(self)))
+      # construct complete list of elements
+      self.elements = self.baseElements + self.conditionButtons
+      # draw elements
+      for index in range(len(self.elements)):
+         self.elements[index].grid(row=self.row,column=index,sticky=N+E+W+S,padx=2,pady=1)
 
-   def editCondition (self, index):
-      # check if condition is new
-      if index == len(self.clist):
-         condition = None
-      # check if index is out of range
-      elif (index < 0 or index > len(self.clist) ):
-         raise KeyError("editCondition index must be <= length of condition list.")
-      else:
-         condition = self.clist[index]
-      # edit condition in its own window
-      result = ConditionDialog(self.master,condition,index == len(self.clist)).condition
-      if result is not None:
-         if result == -1:
-            self.clist.pop(index)
-         else:
-            if index == len(self.clist):
-               self.clist.append(result)
-            else:
-               self.clist[index] = result
-         self.editor.updateSongMenu(uiName(self.clist.pname))
+   def pop (self, index=0):
+      temp = self.clist.pop(index)
+      self.update()
+      return temp
+
+   def append (self, element):
+      self.clist.append(element)
+      self.update()
+
+   def __getitem__ (self, index):
+      return self.clist[index]
+
+   def __setitem__ (self, index, value):
+      self.clist[index] = value
+
+   def __len__ (self):
+      return len(self.clist)
+
+class SongEditor (Frame):
+   def __init__ (self, master, clists = []):
+      super().__init__(master)
+      self.songrows = []
+      self.newSongButton = Button(self,text="Add Song",command=self.addSong)
+      self.load(clists)
+
+   def load (self, clists):
+      # clear previous information
+      for child in self.winfo_children():
+         child.grid_forget()
+      # reconstruct
+      self.songrows = []
+      # turn clists into song rows
+      for index in range(len(clists)):
+         self.songrows.append(SongRow(self,index+1,clists[index]))
+      self.update(True)
+
+   def addSong (self):
+      self.songrows.append(SongRow(self,len(self.songrows)+1,ConditionList()))
+      self.update(len(self.songrows)==1)
+
+   def update (self, headings = False):
+      for index in range(len(self.songrows)):
+         songrow = self.songrows[index]
+         songrow.row = index+1
+         songrow.update()
+      if len(self.songrows) > 0 and headings:
+         Label(self,text="Priority").grid(row=0,column=0,columnspan=3,sticky=E+W)
+         Label(self,text="Song Location").grid(row=0,column=4,columnspan=2,sticky=E+W)
+         Label(self,text="Conditions").grid(row=0,column=7,columnspan=999,sticky=W)
+      self.newSongButton.grid_forget()
+      self.newSongButton.grid(row=len(self.songrows)+1,column=0,columnspan=3,sticky=E+W, padx=2, pady=2)
+
+   def moveSongUp (self, index):
+      temp = self.songrows.pop(index)
+      self.songrows.insert(index-1,temp)
+      self.update()
+
+   def moveSongDown (self, index):
+      temp = self.songrows.pop(index)
+      self.songrows.insert(index+1,temp)
+      self.update()
+
+   def clists (self):
+      self.update()
+      return [row.clist for row in self.songrows]
+
+   def count (self):
+      return len(self.songrows)
+
+class PlayerSelectFrame (Frame):
+   def __init__ (self, master, command = None, players = []):
+      super().__init__(master)
+      Button(self, text="Add Player", command=self.addPlayer).grid(row=0,column=0,sticky=E+W,padx=5,pady=5)
+      self.newPlayerEntry = Entry(self, width=30)
+      self.newPlayerEntry.grid(row=0,column=1, sticky=W,padx=5,pady=5)
+      # songs for each player
+      self.songs = {
+         "Anthem" : [],
+         "Victory Anthem" : [],
+         "Goalhorn" : []
+      }
+      # create list selector with default options
+      self.playerMenu = ScrollingListbox(self)
+      self.playerMenu.insert(END,"Anthem")
+      self.playerMenu.insert(END,"Victory Anthem")
+      self.playerMenu.insert(END,"Goalhorn")
+      self.playerMenu.grid(row=1,column=0,padx=5,pady=5,sticky=N)
+      self.current = None
+      # create song editor
+      self.songEditor = SongEditor(self)
+      self.songEditor.grid(row=1,column=1,sticky=NE+SW,padx=5,pady=5)
+      # add any players passed to constructor
+      self.updateList(players)
+      # bind callback to list
+      self.bindSelect(self.loadSongEditor)
+      self.playerMenu.selection_set(first = 0)
+      self.loadSongEditor("Anthem")
+
+   def loadSongEditor (self, pname):
+      if self.current is not None:
+         self.songs[self.current] = self.songEditor.clists()
+      clists = self.songs[pname]
+      self.songEditor.load(clists)
+      self.current = pname
+
+   def updateList (self, players = []):
+      self.playerMenu.delete(3,END)
+      self.songs = {
+         "Anthem" : [],
+         "Victory Anthem" : [],
+         "Goalhorn" : []
+      }
+      players.sort()
+      for player in players:
+         self.playerMenu.insert(END,player)
+      setMaxWidth(players+list(specialNames),self.playerMenu)
+
+   def updateSongs (self, songs):
+      for player in self:
+         self.songs[player] = songs[player]
+      self.current = None
+      self.loadSongEditor("Anthem")
+
+   def addPlayer (self):
+      name = self.newPlayerEntry.get()
+      if name == "":
+         messagebox.showwarning("Error","Player name cannot be empty.")
+         return
+      i = 3
+      while i < self.playerMenu.size() and name > self.playerMenu.get(i):
+         i += 1
+      if self.playerMenu.get(i) == name:
+         messagebox.showwarning("Error","Player {} already exists.".format(name))
+         return
+      self.playerMenu.insert(i,name)
+      self.songs[player] = []
+
+   def get (self):
+      index = self.playerMenu.curselection()[0]
+      return self.playerMenu.get(index)
+
+   def __getitem__ (self, index):
+      if index < 0 or index >= self.playerMenu.size():
+         raise IndexError
+      return self.playerMenu.get(index)
+
+   def bindSelect (self, command):
+      def eventToName (event):
+         index = int(event.widget.curselection()[0])
+         return event.widget.get(index)
+      self.playerMenu.bind('<<ListboxSelect>>',lambda event, copy=command: copy(eventToName(event)))
 
 class Editor (Frame):
-   firstConditionRow = 1
-   startSongMenu = 2
-
    def __init__ (self, master):
       # tkinter master window
       super().__init__(master)
@@ -96,13 +262,13 @@ class Editor (Frame):
       # file name of the .4ccm
       self.filename = None
       # team editor portion
-      self.teamMenu = self.buildTeamEditor()
-      self.teamMenu.pack(anchor="nw")
-
-      self.songMenu = self.buildSongMenu()
-      self.songMenu.pack(anchor="nw")
-
-      self.updatePlayerMenu()
+      temp = Frame(self, pady=5)
+      Label(temp, text="Team Name:").grid(row=0,column=0)
+      self.teamEntry = Entry(temp, width=20)
+      self.teamEntry.grid(row=0,column=1)
+      temp.pack(anchor="nw")
+      self.playerMenu = PlayerSelectFrame(self)
+      self.playerMenu.pack(anchor="nw")
 
    def buildFileMenu (self):
       """
@@ -117,57 +283,17 @@ class Editor (Frame):
       self.saveAsButton.pack(side=LEFT)
       return buttons
 
-   def buildTeamEditor(self):
-      """
-         Constructs the team editing menu and returns a tk frame containing it.
-      """
-      frame = Frame(self)
-      # team name
-      Label(frame, text="Team:", font="-weight bold").grid(row=1,column=0,sticky=W)
-      self.teamEntry = Entry(frame)
-      self.teamEntry.grid(row=1,column=1)
-      # dict mapping players to lists of ConditionList objects
-      self.players = {"Anthem" : [], "Goalhorn" : [], "Victory Anthem" : []}
-      plist = list(self.players.keys())
-      plist.sort()
-      # player dropdown menu
-      ## label
-      Label(frame, text="Player:", font="-weight bold").grid(row=2,column = 0,sticky=W)
-      ## player variable
-      self.player = StringVar()
-      self.player.set("Anthem")
-      ## actual optionmenu
-      self.playerMenu = OptionMenu(frame, self.player, *plist, command=self.updateSongMenu)
-      setMaxWidth(plist,self.playerMenu)
-      self.playerMenu.grid(row = 2, column = 1)
-      ## adding new players
-      self.playerEntry = Entry(frame)
-      self.playerEntry.grid(row = 2,column = 2)
-      self.playerButton = Button(frame, text="Add Player", command=self.newplayer)
-      self.playerButton.grid(row = 2, column = 3)
-      return frame
-
-   def buildSongMenu (self):
-      # song listing menu
-      frame = Frame(self)
-      self.songRows = []
-      self.songButtons = []
-      ## headings
-      Label(frame, text="Song Location").grid(row=0,column=2,columnspan=2)
-      Label(frame, text="Conditions").grid(row=0,column=4,columnspan=2)
-      ## new song buton
-      self.newSongButton = Button(frame, text="New Song", command=self.newSong)
-      return frame
-
    def load4ccm (self):
       self.filename = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
-      self.players, teamName = parse(self.filename,False)
-      uiConvert(self.players)
+      songs, teamName = parse(self.filename,False)
+      uiConvert(songs)
 
       self.teamEntry.delete(0,END)
       self.teamEntry.insert(0,teamName)
-      self.player.set("Anthem")
-      self.updatePlayerMenu()
+      self.teamEntry.xview_moveto(1)
+      normalPlayers = [x for x in songs if x not in specialNames]
+      self.playerMenu.updateList(normalPlayers)
+      self.playerMenu.updateSongs(songs)
 
    def save4ccm (self):
       if self.filename is None:
@@ -178,108 +304,40 @@ class Editor (Frame):
       self.filename = filedialog.asksaveasfilename(defaultextension=".4ccm", filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
       self.writefile(self.filename)
 
-   def updatePlayerMenu (self):
-      # add player menu and "add player" button if not already present
-      if self.playerMenu is not None:
-         self.playerMenu.grid_forget()
-      plist = list(self.players.keys())
-      plist.sort()
-      self.playerMenu = OptionMenu(self.teamMenu, self.player,*plist, command=self.updateSongMenu)
-      setMaxWidth(plist,self.playerMenu)
-      self.playerMenu.grid(row = 2, column = 1)
-      self.updateSongMenu("Anthem")
-
-   def newSong (self):
-      name = self.player.get()
-      self.players[name].append(ConditionList(name, self.teamEntry.get(), [], "New Song"))
-      print("Added song to player {}.".format(name))
-      self.updateSongMenu()
-
-   def addSongButtons (self, index):
-      b1, b2 = None, None
-      name = self.player.get()
-      if index != 0:
-         b1 = Button(self.songMenu,text="▲",command=lambda: self.moveSongUp(index))
-         b1.grid(row=index+Editor.firstConditionRow,column=0)
-      if index != len(self.players[name])-1:
-         b2 = Button(self.songMenu,text="▼",command=lambda: self.moveSongDown(index))
-         b2.grid(row=index+Editor.firstConditionRow,column=1)
-      self.songButtons.append((b1,b2))
-
-   def updateSongMenu (self, name = None):
-      if name is None:
-         name = self.player.get()
-      # clear old information
-      for row in self.songRows:
-         row.clear()
-      for b1,b2 in self.songButtons:
-         if b1 is not None:
-            b1.grid_forget()
-         if b2 is not None:
-            b2.grid_forget()
-      self.newSongButton.grid_forget()
-      self.songRows = []
-      print("Displaying songs for player {}.".format(name))
-      # get condition lists
-      clists = self.players[name]
-      # construct song rows
-      index = 0
-      for clist in clists:
-         conditionRow = SongRow(self,clist)
-         conditionRow.draw(index)
-         self.songRows.append(conditionRow)
-         self.addSongButtons(index)
-         index += 1
-      self.newSongButton.grid(row = index+Editor.firstConditionRow, column = 2)
-
-   def moveSongUp (self, index):
-      name = self.player.get()
-      temp = self.players[name].pop(index)
-      self.players[name].insert(index-1,temp)
-      print("Moved song {} for player {} up.".format(temp.songname,name))
-      self.updateSongMenu(name)
-
-   def moveSongDown (self, index):
-      name = self.player.get()
-      temp = self.players[name].pop(index)
-      self.players[name].insert(index+1,temp)
-      print("Moved song {} for player {} down.".format(temp.songname,name))
-      self.updateSongMenu(name)
-
    def writefile (self,filename):
       if self.teamEntry.get() == "":
-         messagebox.showwarning("Error","Team name cannot be empty.")
+         messagebox.showerror("Error","Team name cannot be empty.")
          return None
-      outConvert(self.players)
       with open(filename, 'w') as outfile:
+         players = self.playerMenu.songs
+         flag = False
+         outConvert(players)
+         print("# team identifier", file=outfile)
          print("name;{}".format(self.teamEntry.get()), file=outfile)
+         print("",file=outfile)
          # if no victory anthems provided, copy normal anthem
-         if "victory" not in self.players or len(self.players["victory"]) == 0:
-            self.players["victory"] = self.players["anthem"]
-         for key in self.players.keys():
-            if len(self.players[key]) > 0:
-               print("Writing songs for key {}".format(key))
-               for conditions in self.players[key]:
-                  print("{};{}".format(key,conditions), file=outfile)
-      uiConvert(self.players)
-
-   def newplayer (self):
-      name = self.playerEntry.get()
-      if name in self.players:
-         messagebox.showwarning("Error","Player {} already exists.".format(name))
-         return
-      else:
-         self.players[name] = []
-         print("Adding player {}.".format(name))
-         self.updatePlayerMenu()
-
+         print("# reserved names", file=outfile)
+         if "victory" not in players or len(players["victory"]) == 0:
+            players["victory"] = players["anthem"]
+         for player in self.playerMenu:
+            if player not in reserved and flag == False:
+               print("",file=outfile)
+               print("# regular players", file=outfile)
+               flag = True
+            if len(self.players[player]) > 0:
+               print("Writing songs for player {}.".format(player))
+               for conditions in players[player]:
+                  print("{};{}".format(player,conditions), file=outfile)
+            else:
+               print("List for player {} is empty, will be ignored.").format(player)
+         uiConvert(players)
 
 def main ():
    # tkinter master window
-   master = Tk()
-   master.title("rigDJ {}".format(version))
+   mainWindow = Tk()
+   mainWindow.title("rigDJ {}".format(version))
    # construct editor object in window
-   dj = Editor(master)
+   dj = Editor(mainWindow)
    dj.pack()
    # run
    mainloop()
