@@ -63,7 +63,7 @@ class ScrollingListbox (Listbox):
       self.scrollbar.pack(side=RIGHT, fill=Y)
       # initialise self inside own frame, and set yscrollcommand
       super().__init__(self.frame, *args, bd=0, yscrollcommand=self.scrollbar.set, **kwargs)
-      super().pack()
+      super().pack(fill=BOTH, expand=1)
       # tell scrollbar to control yview
       self.scrollbar.config(command=self.yview)
 

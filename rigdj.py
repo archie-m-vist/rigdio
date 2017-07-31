@@ -64,6 +64,8 @@ class SongRow:
 
    def buildBaseElements (self):
       output = []
+      output.append(Button(self.master,text="✖", command=self.delete))
+      output.append(Label(self.master,text=" "))
       output.append(Button(self.master,text="▼", command=lambda: self.master.moveSongDown(self.row-1)))
       output.append(Label(self.master,textvariable=self.strRow))
       output.append(Button(self.master,text="▲", command=lambda: self.master.moveSongUp(self.row-1)))
@@ -78,6 +80,10 @@ class SongRow:
       for element in self.elements:
          element.grid_forget()
 
+   def delete (self):
+      self.clear()
+      self.master.pop(self.row-1)
+
    def update (self):
       self.strRow.set(str(self.row))
       self.clist.songname = self.songNameEntry.get()
@@ -87,9 +93,9 @@ class SongRow:
       
       # disable arrows if the row is inappropriate
       if self.row == 1:
-         self.baseElements[2]['state'] = 'disabled'
+         self.baseElements[4]['state'] = 'disabled'
       if self.row == self.master.count():
-         self.baseElements[0]['state'] = 'disabled'
+         self.baseElements[2]['state'] = 'disabled'
 
       # construct condition buttons
       self.conditionButtons = [ConditionButton(self,index) for index in range(len(self.clist))]
@@ -146,9 +152,9 @@ class SongEditor (Frame):
          songrow.row = index+1
          songrow.update()
       if len(self.songrows) > 0 and headings:
-         Label(self,text="Priority").grid(row=0,column=0,columnspan=3,sticky=E+W)
-         Label(self,text="Song Location").grid(row=0,column=4,columnspan=2,sticky=E+W)
-         Label(self,text="Conditions").grid(row=0,column=7,columnspan=999,sticky=W)
+         Label(self,text="Priority").grid(row=0,column=2,columnspan=3,sticky=E+W)
+         Label(self,text="Song Location").grid(row=0,column=6,columnspan=2,sticky=E+W)
+         Label(self,text="Conditions").grid(row=0,column=9,columnspan=999,sticky=W)
       self.newSongButton.grid_forget()
       self.newSongButton.grid(row=len(self.songrows)+1,column=0,columnspan=3,sticky=E+W, padx=2, pady=2)
 
@@ -162,6 +168,11 @@ class SongEditor (Frame):
       self.songrows.insert(index+1,temp)
       self.update()
 
+   def pop (self, index=0):
+      temp = self.songrows.pop(index)
+      self.update()
+      return(temp)
+
    def clists (self):
       self.update()
       return [row.clist for row in self.songrows]
@@ -172,9 +183,9 @@ class SongEditor (Frame):
 class PlayerSelectFrame (Frame):
    def __init__ (self, master, command = None, players = []):
       super().__init__(master)
-      Button(self, text="Add Player", command=self.addPlayer).grid(row=0,column=0,sticky=E+W,padx=5,pady=5)
+      
       self.newPlayerEntry = Entry(self, width=30)
-      self.newPlayerEntry.grid(row=0,column=1, sticky=W,padx=5,pady=5)
+      self.newPlayerEntry.grid(row=0,column=1, sticky=N+W,padx=5,pady=10)
       # songs for each player
       self.songs = {
          "Anthem" : [],
@@ -182,15 +193,23 @@ class PlayerSelectFrame (Frame):
          "Goalhorn" : []
       }
       # create list selector with default options
-      self.playerMenu = ScrollingListbox(self)
+      self.playerMenu = ScrollingListbox(self,exportselection=False)
       self.playerMenu.insert(END,"Anthem")
       self.playerMenu.insert(END,"Victory Anthem")
       self.playerMenu.insert(END,"Goalhorn")
-      self.playerMenu.grid(row=1,column=0,padx=5,pady=5,sticky=N)
+      self.playerMenu.grid(row=2,column=0,padx=5,pady=5,sticky=N+S)
       self.current = None
+      # delete player
+      buttonFrame = Frame(self)
+      Button(buttonFrame, text="Add Player", command=self.addPlayer).pack(fill=X,pady=2)
+      self.renameButton = Button(buttonFrame, text="Rename Selected", command=self.renamePlayer)
+      self.renameButton.pack(fill=X,pady=2)
+      self.deleteButton = Button(buttonFrame, text="Delete Selected", command=self.deletePlayer)
+      self.deleteButton.pack(fill=X,pady=2)
+      buttonFrame.grid(row=0,column=0,padx=5,pady=5)
       # create song editor
       self.songEditor = SongEditor(self)
-      self.songEditor.grid(row=1,column=1,sticky=NE+SW,padx=5,pady=5)
+      self.songEditor.grid(row=2,column=1,rowspan=3,sticky=NE+SW,padx=5,pady=5)
       # add any players passed to constructor
       self.updateList(players)
       # bind callback to list
@@ -199,6 +218,12 @@ class PlayerSelectFrame (Frame):
       self.loadSongEditor("Anthem")
 
    def loadSongEditor (self, pname):
+      if pname in specialNames:
+         self.renameButton["state"] = 'disabled'
+         self.deleteButton["state"] = 'disabled'
+      else:
+         self.renameButton["state"] = 'normal'
+         self.deleteButton["state"] = 'normal'
       if self.current is not None:
          self.songs[self.current] = self.songEditor.clists()
       clists = self.songs[pname]
@@ -207,21 +232,25 @@ class PlayerSelectFrame (Frame):
 
    def updateList (self, players = []):
       self.playerMenu.delete(3,END)
-      self.songs = {
-         "Anthem" : [],
-         "Victory Anthem" : [],
-         "Goalhorn" : []
-      }
       players.sort()
       for player in players:
          self.playerMenu.insert(END,player)
       setMaxWidth(players+list(specialNames),self.playerMenu)
 
    def updateSongs (self, songs):
+      self.songs = {
+         "Anthem" : [],
+         "Victory Anthem" : [],
+         "Goalhorn" : []
+      }
       for player in self:
-         self.songs[player] = songs[player]
+         if player in songs:
+            self.songs[player] = songs[player]
+         elif player not in specialNames:
+            self.songs.delete(player)
       self.current = None
       self.loadSongEditor("Anthem")
+      self.current = "Anthem"
 
    def addPlayer (self):
       name = self.newPlayerEntry.get()
@@ -235,7 +264,36 @@ class PlayerSelectFrame (Frame):
          messagebox.showwarning("Error","Player {} already exists.".format(name))
          return
       self.playerMenu.insert(i,name)
-      self.songs[player] = []
+      self.songs[name] = []
+      self.setSelection(i)
+
+   def setSelection (self,index):
+      self.playerMenu.selection_clear(first=0,last=END)
+      self.playerMenu.selection_set(first=index)
+      self.loadSongEditor(pname=self.get())
+
+   def deletePlayer (self):
+      name = self.get()
+      if name in specialNames:
+         messagebox.showwarning("Error","Cannot delete special song type.")
+         return
+      self.playerMenu.delete(self.playerMenu.curselection()[0])
+      self.setSelection(0)
+
+   def renamePlayer (self):
+      name = self.newPlayerEntry.get()
+      if name in self:
+         messagebox.showwarning("Error","Cannot rename to existing player {}.".format(name))
+         return
+      oldname = self.get()
+      print(oldname)
+      temp = self.songEditor.clists()
+      print("renamePlayer",temp)
+      self.deletePlayer()
+      self.addPlayer()
+      self.songs[name] = temp
+      self.current = None
+      self.loadSongEditor(pname=name)
 
    def get (self):
       index = self.playerMenu.curselection()[0]
@@ -275,13 +333,17 @@ class Editor (Frame):
          Constructs the file save/load menu buttons.
       """
       buttons = Frame(self)
-      self.loadButton = Button(buttons, text="Load .4ccm", command=self.load4ccm)
-      self.loadButton.pack(side=LEFT)
-      self.saveButton = Button(buttons, text="Save .4ccm", command=self.save4ccm)
-      self.saveButton.pack(side=LEFT)
-      self.saveAsButton = Button(buttons, text="Save .4ccm As...", command=self.save4ccmas)
-      self.saveAsButton.pack(side=LEFT)
+      Button(buttons, text="New .4ccm", command=self.clear4ccm).pack(side=LEFT)
+      Button(buttons, text="Load .4ccm", command=self.load4ccm).pack(side=LEFT)
+      Button(buttons, text="Save .4ccm", command=self.save4ccm).pack(side=LEFT)
+      Button(buttons, text="Save .4ccm As...", command=self.save4ccmas).pack(side=LEFT)
       return buttons
+
+   def clear4ccm (self):
+      self.filename = None
+      self.teamEntry.delete(0,END)
+      self.playerMenu.updateList([])
+      self.playerMenu.updateSongs({})
 
    def load4ccm (self):
       self.filename = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
