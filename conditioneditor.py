@@ -44,7 +44,6 @@ class ConditionEditor (Frame):
       output = []
       for field in self.fields:
          token = str(field.get())
-         print(token)
          # escape special characters
          if "[" in token:
             token = token.replace("[","\\[")
