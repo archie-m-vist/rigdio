@@ -22,6 +22,17 @@ def uiName (player):
    else:
       return player
 
+def outName (player):
+   outNames = {
+      "Anthem" : "anthem",
+      "Goalhorn" : "goal",
+      "Victory Anthem" : "victory",
+   }
+   if player in outNames:
+      return outNames[player]
+   else:
+      return player
+
 def uiConvert (players):
    """
       Converts a players dictionary read from a 4ccm file from keyword names to human-readable names.
