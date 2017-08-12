@@ -557,6 +557,7 @@ class ConditionPlayer (ConditionList):
       self.instructionsStart = []
       self.instructionsPause = []
       self.instructionsEnd = []
+      self.maxVolume = 100
       self.instruct()
    
    def instruct (self):
