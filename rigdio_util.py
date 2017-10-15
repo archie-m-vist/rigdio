@@ -11,7 +11,7 @@ def timeToSeconds(time):
       return None
 
 def main():
-   print(timeToSeconds("1:22"))
+   print(timeToSeconds("1:30"))
    print(timeToSeconds("0:40"))
 
 if __name__ == '__main__':

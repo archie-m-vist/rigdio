@@ -49,7 +49,7 @@ class ScoreWidget (Frame):
 class Rigdio (Frame):
    def __init__ (self, master):
       Frame.__init__(self, master)
-      self.game = GameState()
+      self.game = GameState(instance=self)
       self.home = None
       self.away = None
       # file menu
@@ -85,7 +85,11 @@ class Rigdio (Frame):
          return
       elif isfile(f):
          print("Loading music instructions from {}.".format(f))
-         tmusic, tname = parse(f,home=home)
+         try:
+            tmusic, tname = parse(f,home=home)
+         except AttributeError as e:
+            messagebox.showerror("AttributeError on file load; did you download rigdio.exe instead of rigdio.7z?")
+            raise e
          # copy anthem to victory anthem if none given
          if "victory" not in tmusic:
             messagebox.showwarning("Warning","No victory anthem information in {}; victory anthem will need to be played manually.".format(f))

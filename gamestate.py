@@ -1,13 +1,15 @@
 class GameState:
-   def __init__ (self, widget = None):
+   def __init__ (self, widget = None, instance = None):
       self.home_score = 0
       self.away_score = 0
       self.home_name = "HOME"
       self.away_name = "AWAY"
       self.home_scorers = {}
       self.away_scorers = {}
+      self.instance = instance
       self.widget = widget
       self.gametype = "standard"
+      self.time = None
 
    def undoLast (self):
       if self.lastPname == None:
@@ -88,3 +90,7 @@ class GameState:
       self.away_score = 0
       self.home_scorers = {}
       self.away_scorers = {}
+      self.clearButtonFlags()
+
+   def clearButtonFlags (self):
+      self.time = None
