@@ -3,9 +3,17 @@ from time import sleep
 from os.path import basename, abspath, isfile
 import vlc
 
+# needed for prompts
+from tkinter import *
+from tkinter.simpledialog import Dialog
+import tkinter.messagebox as messagebox
+
 from config import settings
 from rigdio_except import UnloadSong, PlayNextSong
 from rigdio_util import timeToSeconds
+
+binaryOperators = set(["<", ">", "<=", ">=", "==", "!="])
+unloadableOperators = set(["<", "<=", "=="])
 
 class Condition:
    null = "nullCond"
@@ -52,7 +60,10 @@ class Condition:
 
    def __str__ (self):
       return "{} {}".format(self.type()," ".join(self.tokens())).strip()
-   __repr__ = __str__
+
+   def __repr__ (self):
+      return "ConditionList.buildCondition(pname={},tname={},home={},tokens={})".format(self.pname,self.tname,self.home,str(self).split(" "))
+      
 
 class ArithCondition (Condition):
    desc = """Superclass for all conditions that evaluate an arithmetic expression."""
@@ -76,11 +87,10 @@ class GoalCondition (ArithCondition):
 
    def __init__(self, tokens, **kwargs):
       super().__init__(**kwargs)
-      operators = ["<", ">", "<=", ">=", "=="]
       if tokens[0] == "=":
          tokens[0] = "=="
-      if tokens[0] not in operators:
-         raise Exception("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+operators)
+      if tokens[0] not in binaryOperators:
+         raise ValueError("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+list(binaryOperators))
       self.comparison = "{} "+tokens[0]+" "+tokens[1]
    
    def type (self):
@@ -172,7 +182,10 @@ class LeadCondition (GoalCondition):
 
    def __init__ (self, **kwargs):
       # pass tokens up to GoalCondition, the only difference in handling is in args()
-      super().__init__(**kwargs)
+      try:
+         super().__init__(**kwargs)
+      except ValueError:
+         raise ValueError("invalid LeadCondition operator "+tokens[0]+"; valid operators are "+list(binaryOperators))
 
    def args(self, gamestate):
       gd = gamestate.team_score(self.home) - gamestate.opponent_score(self.home)
@@ -265,6 +278,73 @@ class MostGoalsCondition (Condition):
    def type (self):
       return "mostgoals"
 
+class PromptCondition (Condition):
+   def __init__ (self, dtype, **kwargs):
+      super().__init__(**kwargs)
+      self.dtype = dtype
+
+   def check (self, gamestate):
+      if self.needsPrompt(gamestate):
+         dialog = self.dtype(gamestate.instance)
+         results = dialog.results
+         return self.checkResults(gamestate,results)
+      else:
+         return self.checkStored(gamestate)
+
+class TimeCondition (PromptCondition):
+   class Prompt (Dialog):
+      def __init__ (self, *args, **kwargs):
+         super().__init__(*args, **kwargs)
+
+      def body (self, frame):
+         Label(frame,text="When was the goal scored (minute)?").pack()
+         self.inputVar = StringVar()
+         entry = Entry(frame,textvariable=self.inputVar)
+         entry.pack()
+         entry.focus()
+
+      def validate (self):
+         try:
+            int(self.inputVar.get())
+         except:
+            messagebox.showwarning("Input Error", "Goal time must be an integer.")
+            return False
+         return True
+
+      def apply (self):
+         self.results = [int(self.inputVar.get())]
+
+   def __init__ (self, tokens, **kwargs):
+      super().__init__(dtype=TimeCondition.Prompt,**kwargs)
+      if tokens[0] == "=":
+         tokens[0] = "=="
+      if tokens[0] not in binaryOperators:
+         raise ValueError("invalid GoalCondition operator "+tokens[0]+"; valid operators are "+list(binaryOperators))
+      self.operator = tokens[0]
+      try:
+         self.time = int(tokens[1])
+      except:
+         raise ValueError("Invalid TimeCondition token {}; must be integer.".format(tokens[1]))
+
+   def needsPrompt (self, gamestate):
+      return gamestate.time == None
+
+   def checkResults (self, gamestate, results):
+      # remove the song from the list if it's later in the game, to save ram from shit like /remi/
+      gamestate.time = results[0]
+      return self.checkStored(gamestate)
+
+   def checkStored (self, gamestate):
+      if gamestate.time > self.time and self.operator in unloadableOperators:
+         raise UnloadSong
+      return eval("{} {} {}".format(gamestate.time, self.operator, self.time))
+
+   def type (self):
+      return "time"
+
+   def tokens (self):
+      return [self.operator, str(self.time)]
+
 class MetaCondition (Condition):
    def __init__ (self, tokens, **kwargs):
       super().__init__(**kwargs)
@@ -318,7 +398,9 @@ class Instruction:
 
    def __str__ (self):
       return "{} {}".format(self.type()," ".join(self.tokens()))
-   __repr__ = __str__
+
+   def __repr__ (self):
+      return "ConditionList.buildCondition(pname={},tname={},home={},tokens={})".format(self.pname,self.tname,self.home,str(self).split(" "))
 
    def type (self):
       raise NotImplementedError("Instruction subclass must override type().")
@@ -419,8 +501,12 @@ conditions = {
    "home" : HomeCondition,
    "once" : OnceCondition,
    "mostgoals" : MostGoalsCondition,
+   # prompt
+   "time" : TimeCondition,
+   # meta
    "not" : NotCondition,
    "every" : EveryCondition,
+   # instruction
    "start" : StartInstruction,
    "pause" : PauseInstruction,
    "end" : EndInstruction
@@ -485,7 +571,15 @@ class ConditionList:
       for instruction in self.instructions:
          output = output + ";" + str(instruction)
       return output
-   __repr__ = __str__
+
+   def __repr__ (self):
+      pname = self.pname
+      tname = self.tname
+      data = str(self).split(";")[1:]
+      songname = self.songname
+      home = self.home
+      output = "ConditionList(pname={},tname={},data={},songname={},home={})"
+      return output.format(pname,tname,data,songname,home)
 
    def __len__ (self):
       return len(self.all)
