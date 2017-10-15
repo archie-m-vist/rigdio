@@ -54,8 +54,12 @@ class PlayerButtons ():
                print("Playing",self.song.songname)
                self.song.play()
                self.playButton.configure(relief=SUNKEN)
+               # remove any data specific to this goal
+               self.game.clearButtonFlags()
                return
             i += 1
+         # remove any data specific to this goal
+         self.game.clearButtonFlags()
          messagebox.showwarning("No Song Found", "No song for player {} matches current game state; no music will play.".format(self.pname))
       else:
          self.song.pause()
