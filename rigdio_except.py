@@ -5,5 +5,12 @@ class UnloadSong (Exception):
 
 class PlayNextSong (Exception):
    def __str__ (self):
-      "Raised when a ConditionList's instruction needs the next song available to be played.\
+      "A ConditionList's instruction needs the next song available to be played.\
       If you see this message, a serious error has occurred; contact the developer."
+
+class SongNotFound (Exception):
+   def __init__ (self, pname):
+      self.pname = pname
+
+   def __str__ (self):
+      return "No song was found matching current game state for player {}. No music will play.".format(self.pname)

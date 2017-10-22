@@ -685,7 +685,7 @@ class ConditionPlayer (ConditionList):
    def pause (self):
       if self.isGoalhorn:
          print("Fading out {}.".format(self.songname))
-         self.fade = threading.Thread(target=fadeOut,args=(self,))
+         self.fade = threading.Thread(target=self.fadeOut)
          self.fade.start()
       else:
          print("Pausing {}.".format(self.songname))
@@ -700,22 +700,93 @@ class ConditionPlayer (ConditionList):
                instruction.run(self)
             self.endChecker = None
 
+   def fadeOut (self):
+      i = 100
+      while i > 0:
+         if self.fade == None:
+            break
+         self.song.audio_set_volume(i)
+         sleep(settings.fade/100)
+         i -= 1
+      for instruction in self.instructionsPause:
+         instruction.run(self)
+      self.song.pause()
+      if self.song.get_media().get_state() == vlc.State.Ended:
+         self.reloadSong()
+      self.song.audio_set_volume(self.maxVolume)
+      self.fade = None
+
    def disable (self):
       self.song.stop()
       super().disable()
 
-def fadeOut (player):
-   i = 100
-   while i > 0:
-      if player.fade == None:
-         break
-      player.song.audio_set_volume(i)
-      sleep(settings.fade/100)
-      i -= 1
-   for instruction in player.instructionsPause:
-      instruction.run(player)
-   player.song.pause()
-   if player.song.get_media().get_state() == vlc.State.Ended:
-      player.reloadSong()
-   player.song.audio_set_volume(player.maxVolume)
-   player.fade = None
+class PlayerManager:
+   def __init__ (self, clists, home, game):
+      # song information
+      self.clists = clists
+      self.home = home
+      self.game = game
+      # derived information
+      self.song = None
+      self.pname = clists[0].pname
+      self.futureVolume = None
+
+   def __iter__ (self):
+      for x in self.clists:
+         yield x
+
+   def adjustVolume (self, value):
+      if self.song is not None:
+         self.song.adjustVolume(value)
+      else:
+         self.futureVolume = value
+
+   def getSong (self):
+      # iterate over songs with while loop
+      i = 0
+      while i < len(self.clists):
+         # try to check the condition list
+         try:
+            checked = self.clists[i].check(self.game)
+         # if a song will no longer be played, check will raise UnloadSong
+         except UnloadSong:
+            # disable the ConditionListPlayer, closing the song file
+            self.clists[i].disable()
+            # deleted 
+            del self.clists[i]
+            # do not increment i, self.clists[i] is now the next song; continue
+            continue
+         # if conditions were met
+         if checked:
+            return self.clists[i]
+         # if the song didn't succeed, move to the next
+         i += 1
+      # if no song was found, return nothing
+      return None
+
+   def playSong (self):
+      # don't play multiple songs at once
+      self.pauseSong()
+      # get the song to play
+      self.song = self.getSong()
+      # if volume was stored, update it
+      if self.futureVolume is not None:
+         self.song.adjustVolume(self.futureVolume)
+      # check if no song was found
+      if self.song is None:
+         raise SongNotFound(self.pname)
+      # log song
+      print("Playing",self.song.songname)
+      # play the song
+      self.song.play()
+      # remove any data specific to this goal
+      self.game.clearButtonFlags()
+
+   def pauseSong (self):
+      if self.song is not None:
+         # log pause
+         print("Pausing",self.song.songname)
+         # pause the song
+         self.song.pause()
+         # clear self.song
+         self.song = None
