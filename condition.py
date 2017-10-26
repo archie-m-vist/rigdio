@@ -728,6 +728,7 @@ class PlayerManager:
       self.game = game
       # derived information
       self.song = None
+      self.lastSong = None
       self.pname = clists[0].pname
       self.futureVolume = None
 
@@ -789,4 +790,9 @@ class PlayerManager:
          # pause the song
          self.song.pause()
          # clear self.song
+         self.lastSong = self.song
          self.song = None
+
+   def resetLastPlayed (self):
+      if self.lastSong is not None:
+         self.lastSong.reloadSong()

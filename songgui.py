@@ -24,8 +24,12 @@ class PlayerButtons:
          self.reserved = True
       self.listButton = Button(frame, text="?", command=self.showSongs, bg=settings.colours["home" if home else "away"])
       self.playButton = Button(frame, text=self.text, command=self.playSong, bg=settings.colours["home" if home else "away"])
+      self.resetButton = Button(frame, text="⟲", command=self.resetSong, bg=settings.colours["home" if home else "away"])
       self.volume = Scale(frame, from_=0, to=100, orient=HORIZONTAL, command=self.clists.adjustVolume, showvalue=0)
       self.volume.set(100)
+
+   def resetSong (self):
+      self.clists.resetLastPlayed()
 
    def playSong (self):
       if self.clists.song is None:
@@ -63,8 +67,9 @@ class PlayerButtons:
 
    def insert (self, row):
       self.listButton.grid(row=row,column=0,sticky=N+S, padx=2, pady=(5,0))
-      self.playButton.grid(row=row,column=1,sticky=E+W, padx=2, pady=(5,0))
-      self.volume.grid(row=row+1,column=0,columnspan=2,sticky=E+W, pady=(0,5))
+      self.playButton.grid(row=row,column=1,sticky=NE+SW, padx=2, pady=(5,0))
+      self.resetButton.grid(row=row,column=2,sticky=N+S, padx=2, pady=(5,0))
+      self.volume.grid(row=row+1,column=0,columnspan=3,sticky=E+W, pady=(0,5))
 
 class TeamMenu (Frame):
    def __init__ (self, master, tname, players, home, game):
@@ -86,7 +91,7 @@ class TeamMenu (Frame):
       self.buildGoalhornMenu(startRow)
 
    def buildAnthemButtons (self):
-      PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem").insert(0)
+      self.anthemButtons = PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem").insert(0)
 
    def buildVictoryAnthemMenu (self):
       if "victory" in self.players:
