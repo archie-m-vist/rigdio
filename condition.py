@@ -639,10 +639,11 @@ def loadsong(filename, vanthem = False):
    return source
 
 class ConditionPlayer (ConditionList):
-   def __init__ (self, pname, tname, data, songname, home, song, goalhorn = True):
+   def __init__ (self, pname, tname, data, songname, home, song, type = "goalhorn"):
       ConditionList.__init__(self,pname,tname,data,songname,home)
       self.song = song
-      self.isGoalhorn = goalhorn
+      self.type = type
+      self.isGoalhorn = type=="goalhorn"
       self.fade = None
       self.endChecker = None
       self.startTime = 0
@@ -683,7 +684,7 @@ class ConditionPlayer (ConditionList):
       self.song.audio_set_volume(self.maxVolume)
 
    def pause (self):
-      if self.isGoalhorn:
+      if self.type == "goalhorn" or (self.type in settings.fade and settings.fade[self.type]):
          print("Fading out {}.".format(self.songname))
          self.fade = threading.Thread(target=self.fadeOut)
          self.fade.start()
@@ -706,7 +707,7 @@ class ConditionPlayer (ConditionList):
          if self.fade == None:
             break
          self.song.audio_set_volume(i)
-         sleep(settings.fade/100)
+         sleep(settings.fade["time"]/100)
          i -= 1
       for instruction in self.instructionsPause:
          instruction.run(self)

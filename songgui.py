@@ -19,9 +19,14 @@ class PlayerButtons:
       if self.text is None:
          self.text = "\n".join([x.lstrip() for x in self.pname.split(",")])
          self.reserved = False
-      # text was specified, so this is a button for a reserved keyword
       else:
          self.reserved = True
+      # used for anthem handling
+      ## determine if this is an anthem button
+      self.anthem = self.text == "Anthem"
+      ## Home anthem button is hooked to this by the main client, to stop it when it starts
+      self.awayButtonHook = None
+      # text was specified, so this is a button for a reserved keyword
       self.listButton = Button(frame, text="?", command=self.showSongs, bg=settings.colours["home" if home else "away"])
       self.playButton = Button(frame, text=self.text, command=self.playSong, bg=settings.colours["home" if home else "away"])
       self.resetButton = Button(frame, text="⟲", command=self.resetSong, bg=settings.colours["home" if home else "away"])
@@ -32,6 +37,10 @@ class PlayerButtons:
       self.clists.resetLastPlayed()
 
    def playSong (self):
+      # if home team anthem, pause away team anthem
+      if self.anthem and self.awayButtonHook != None:
+         self.awayButtonHook.clists.pauseSong()
+         self.awayButtonHook.playButton.configure(relief=RAISED)
       if self.clists.song is None:
          # score points if it's a goalhorn
          if self.pname not in reserved or self.pname == "goal":
@@ -91,7 +100,8 @@ class TeamMenu (Frame):
       self.buildGoalhornMenu(startRow)
 
    def buildAnthemButtons (self):
-      self.anthemButtons = PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem").insert(0)
+      self.anthemButtons = PlayerButtons(self, self.players["anthem"], self.home, self.game, "Anthem")
+      self.anthemButtons.insert(0)
 
    def buildVictoryAnthemMenu (self):
       if "victory" in self.players:

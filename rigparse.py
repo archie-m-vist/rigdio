@@ -54,10 +54,13 @@ def parse (filename, load = True, home = True):
          data.append(default)
 
       filename = folder+data[1] # location of song, relative to location of export file
+      # if we're loading the songs, create ConditionPlayer objects
       if load:
-         clist = ConditionPlayer(data[0], tname, data[2:], filename, home, loadsong(filename,player=='victory'), (player != "anthem" and player != "victory"))
+         clist = ConditionPlayer(data[0], tname, data[2:], filename, home, loadsong(filename,player=='victory'), ("goalhorn" if (player != "anthem" and player != "victory") else player))
+      # otherwise, ConditionList uses less memory and doesn't make libVLC calls
       else:
          clist = ConditionList(data[0], tname, data[2:], filename, home)
+      # add this condition list to the output
       output[player].append(clist)
    
    # copy default goalhorn onto the end of all player goalhorns

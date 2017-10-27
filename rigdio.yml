@@ -4,5 +4,9 @@ colours:
   away: '#ffe0dd'
   # home team colour
   home: '#e0e0fc'
-# number of seconds to fade out
-fade: 2
+# fade settings
+fade:
+  # toggles anthem fade
+  anthem: True
+  # number of seconds in a fade
+  time: 2

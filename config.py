@@ -2,11 +2,14 @@ import yaml
 from logger import startLog
 
 defaults = dict(
-   fade=2,
+   fade=dict(
+      anthems=False,
+      time=2
+   ),
    colours=dict(
       home='#e0e0fc',
       away='#ffe0dd'
-   )
+   ),
 )
 
 def genCfg ():
@@ -27,10 +30,10 @@ class ConfigValues:
          if key not in self.cfg:
             self.cfg[key] = defaults[key]
       try: 
-         self.cfg['fade'] = float(self.cfg['fade'])
+         self.cfg['fade']['time'] = float(self.cfg['fade']['time'])
       except:
-         print("rigdio.yml error: fade must be number. using default value.")
-         self.cfg['fade'] = defaults['fade']
+         print("rigdio.yml error: fade time must be number. using default value.")
+         self.cfg['fade']['time'] = defaults['fade']['time']
 
    def loadCfg (self):
       try:
