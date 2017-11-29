@@ -419,7 +419,7 @@ class StartInstruction (Instruction):
    def __init__ (self, tokens, **kwargs):
       timestring = tokens[0]
       self.rawTime = timestring
-      self.startTime = 1000*int(timeToSeconds(timestring))
+      self.startTime = int(1000*timeToSeconds(timestring))
 
    def prep (self, player):
       player.instructionsStart.append(self)
