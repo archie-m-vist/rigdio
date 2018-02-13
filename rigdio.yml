@@ -1,12 +1,33 @@
-# colours of UI elements
+chants:
+  # how long a queued but paused chant will wait before playing, in seconds
+  delay: 2
+  # whether or not to fade out chants when a goal occurs while one is playing. default true; false will stop chants immediately.
+  goalFade: true
+  # how long to wait after a ClockStarted after a goal before playing queued chants, in seconds
+  goalDelay: 20
+  # latest point in a game where a chant will be scheduled, in game minutes
+  maximum: 85
+  # earliest point in a game where a chant will be scheduled, in game minutes
+  minimum: 5
+  # number of chants per team per game
+  perTeam: 2
+  # whether to replay the same chant. default false; true will make it possible for a chant to play multiple times in a match
+  repeats: false
 colours:
-  # away team colour
+  # colour used for away-team UI elements
   away: '#ffe0dd'
-  # home team colour
+  # colour used for home-team UI elements
   home: '#e0e0fc'
-# fade settings
 fade:
-  # toggles anthem fade
-  anthem: True
-  # number of seconds in a fade
+  # toggles fading out anthems when they pause. default false
+  anthem: false
+  # toggles fading out goalhorns when they pause. default true
+  goalhorn: true
+  # how long to fade out songs and (if enabled) chants, in seconds.
   time: 2
+# number of seconds in a game minute
+# 5 minute half => 1 minute per 9 game minutes => 6.67 seconds per game minute
+gameMinute: 6.67
+level:
+  # target in dbfs for riglevel
+  target: -20.0

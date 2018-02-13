@@ -3,13 +3,27 @@ from logger import startLog
 
 defaults = dict(
    fade=dict(
-      anthems=False,
+      anthem=False,
+      goalhorn=True,
       time=2
    ),
    colours=dict(
       home='#e0e0fc',
       away='#ffe0dd'
    ),
+   chants=dict(
+      repeats=False,
+      perTeam=2,
+      goalFade=True,
+      goalDelay=20,
+      minimum=5,
+      maximum=85,
+      delay=2
+   ),
+   gameMinute=6.67,
+   level=dict(
+      target = -20.0
+   )
 )
 
 def genCfg ():
@@ -34,6 +48,11 @@ class ConfigValues:
       except:
          print("rigdio.yml error: fade time must be number. using default value.")
          self.cfg['fade']['time'] = defaults['fade']['time']
+      try:
+         self.cfg['gameMinute'] = float(self.cfg['gameMinute'])
+      except:
+         print("rigdio.yml error: gameMinute must be number. using default value.")
+         self.cfg['fade']['time'] = defaults['fade']['time']
 
    def loadCfg (self):
       try:
@@ -48,7 +67,7 @@ class ConfigValues:
    def __getattr__ (self, key):
       return self.cfg[key]
 
-settings = ConfigValues()
-
 if __name__ == '__main__':
    genCfg()
+else:
+   settings = ConfigValues()
