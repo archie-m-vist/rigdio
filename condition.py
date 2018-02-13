@@ -628,13 +628,13 @@ class ConditionList:
             return False
       return True
 
-def loadsong(filename, vanthem = False):
+def loadsong(filename, norepeat = False):
    print("Attempting to load "+filename)
    filename = abspath(filename)
    if not ( isfile(filename) ):  
       raise Exception(filename+" not found.")
    source = vlc.MediaPlayer("file:///"+filename)
-   if not vanthem:
+   if not norepeat:
       source.get_media().add_options("input-repeat=-1")
    return source
 
@@ -661,7 +661,7 @@ class ConditionPlayer (ConditionList):
          instruction.prep(self)
 
    def reloadSong (self):
-      self.song = loadsong(self.songname, self.pname == "victory")
+      self.song = loadsong(self.songname, self.pname == "victory" or self.pname == "chant")
       self.instruct()
 
    def play (self):
@@ -670,8 +670,9 @@ class ConditionPlayer (ConditionList):
          thread = self.fade
          self.fade = None
          thread.join()
-         
       self.song.play()
+      print("volume:",self.maxVolume)
+      self.song.audio_set_volume(self.maxVolume)
       if self.firstPlay:
          for instruction in self.instructionsStart:
             instruction.run(self)
@@ -683,8 +684,10 @@ class ConditionPlayer (ConditionList):
       self.maxVolume = int(value)
       self.song.audio_set_volume(self.maxVolume)
 
-   def pause (self):
-      if self.type == "goalhorn" or (self.type in settings.fade and settings.fade[self.type]):
+   def pause (self, fade=None):
+      if fade is None:
+         fade = self.type in settings.fade and settings.fade[self.type]
+      if fade:
          print("Fading out {}.".format(self.songname))
          self.fade = threading.Thread(target=self.fadeOut)
          self.fade.start()
@@ -694,6 +697,10 @@ class ConditionPlayer (ConditionList):
             instruction.run(self)
          self.song.pause()
    
+   def onEnd (self, callback):
+      events = self.song.event_manager()
+      events.event_attach(vlc.EventType.MediaPlayerEndReached, callback)
+
    def checkEnd (self):
       while self.endChecker is not None:
          if self.song.get_media().get_state() == vlc.State.Ended:
@@ -706,7 +713,7 @@ class ConditionPlayer (ConditionList):
       while i > 0:
          if self.fade == None:
             break
-         self.song.audio_set_volume(i)
+         self.song.audio_set_volume(int(self.maxVolume * i/100))
          sleep(settings.fade["time"]/100)
          i -= 1
       for instruction in self.instructionsPause:
@@ -740,8 +747,7 @@ class PlayerManager:
    def adjustVolume (self, value):
       if self.song is not None:
          self.song.adjustVolume(value)
-      else:
-         self.futureVolume = value
+      self.futureVolume = value
 
    def getSong (self):
       # iterate over songs with while loop
