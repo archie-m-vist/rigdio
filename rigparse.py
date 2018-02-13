@@ -5,7 +5,7 @@ from os.path import basename, splitext
 from condition import ConditionList, ConditionPlayer, loadsong
 
 # reserved names
-reserved = set(['anthem', 'victory', 'goal', 'name'])
+reserved = set(['anthem', 'victory', 'goal', 'name', "chant"])
 
 def parse (filename, load = True, home = True):
    """Parses a music export file and loads it into memory."""
@@ -15,7 +15,8 @@ def parse (filename, load = True, home = True):
    filenames = {
       "goal" : "Goalhorn",
       "anthem" : "Anthem",
-      "victory" : "Victory Anthem"
+      "victory" : "Victory Anthem",
+      "chant" : "chant"
    }
    
    # open filename
@@ -52,14 +53,27 @@ def parse (filename, load = True, home = True):
          default = default.format(tname,fancyname)
          print("No file name specified for {}, looking for {}.".format(player, default))
          data.append(default)
-
       filename = folder+data[1] # location of song, relative to location of export file
       # if we're loading the songs, create ConditionPlayer objects
       if load:
-         clist = ConditionPlayer(data[0], tname, data[2:], filename, home, loadsong(filename,player=='victory'), ("goalhorn" if (player != "anthem" and player != "victory") else player))
+         norepeat = set(["victory","chant"])
+         songtype = ("goalhorn" if (player != "anthem" and player != "victory") else player)
+         clist = ConditionPlayer(
+            pname=data[0],
+            tname=tname,
+            data=data[2:],
+            songname=filename,
+            home=home,
+            song=loadsong(filename,norepeat=player in norepeat),
+            type=songtype)
       # otherwise, ConditionList uses less memory and doesn't make libVLC calls
       else:
-         clist = ConditionList(data[0], tname, data[2:], filename, home)
+         clist = ConditionList(
+            pname=data[0],
+            tname=tname,
+            data=data[2:],
+            songname=filename,
+            home=home)
       # add this condition list to the output
       output[player].append(clist)
    
