@@ -1,7 +1,6 @@
 import sys, os
 from pydub import AudioSegment
-
-target = -20.0
+from config import settings
 
 AudioSegment.converter = os.path.join(os.path.dirname(sys.argv[0]),"libav\\avconv.exe")
 if os.path.exists(AudioSegment.converter):
@@ -29,8 +28,8 @@ def main ():
       else:
          print(   "Output will be placed in {}".format(outpath))
       sound = AudioSegment.from_file(file,format=ext)
-      change = target - sound.dBFS
-      print("   File has volume {} dBFS, target is {} dBFS; applying {} dBFS gain.".format(sound.dBFS,target,change))
+      change = settings.level["target"] - sound.dBFS
+      print("   File has volume {} dBFS, target is {} dBFS; applying {} dBFS gain.".format(sound.dBFS,settings.level["target"],change))
       output = sound.apply_gain(change)
       # export finished sound
       outfile = os.path.join(outpath,os.path.basename(fname)+".mp3")
