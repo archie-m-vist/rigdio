@@ -559,7 +559,7 @@ class Editor (Frame):
 
    def load4ccm (self):
       self.filename = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*")))
-      songs, teamName = parse(self.filename,False)
+      songs, teamName, events = parse(self.filename,False)
       uiConvert(songs)
 
       self.teamEntry.delete(0,END)

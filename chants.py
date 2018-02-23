@@ -10,26 +10,30 @@ class ChantPlayerManager (SENPAIListener):
       if homeParsed is not None:
          self.homeChants = homeParsed
       else:
-         pass
+         self.homeChants = None
       if awayParsed is not None:
          self.awayChants = awayParsed
       else:
-         pass
+         self.awayChants = None
       self.startChants = False
       self.activeChant = None
       self.goalDelay = False
       self.done = False
       self.timeEvent = Event()
       self.time = -1
+      self.times = None
+      self.targetVolume = 100
       # locks for thread safety, and to prevent out-of-order event execution
       # per my standard convention please make sure to acquire nested locks in the order given here to prevent deadlock
       self.locks = {
          "event" : Lock(),
-         "active" : Lock()
+         "active" : Lock(),
+         "times" : Lock()
       }
       super().__init__(*args, **kwargs)
 
    def handlesEvent (self, eventType):
+      print("Got",eventType)
       handled = set(["Goal", "Own Goal", "Clock Started", "Clock Stopped", "Stats Found", "Player Sub", "Card"])
       return eventType in handled
 
@@ -39,8 +43,7 @@ class ChantPlayerManager (SENPAIListener):
          self.startChants = False
          # time update
          self.time = event.gameMinute
-         if self.time > self.times[0]:
-            self.timeEvent.set()
+         self.timeEvent.set()
 
    def handleOwnGoalEvent (self, event):
       with self.locks["event"]:
@@ -48,10 +51,10 @@ class ChantPlayerManager (SENPAIListener):
          self.startChants = False
          # time update
          self.time = event.gameMinute
-         if self.time > self.times[0]:
-            self.timeEvent.set()
+         self.timeEvent.set()
 
    def handleClockStartedEvent (self, event):
+      print("Started!",event.gameMinute)
       with self.locks["event"]:
          if self.goalDelay == True:
             wait(settings.chants["goalDelay"])
@@ -59,20 +62,19 @@ class ChantPlayerManager (SENPAIListener):
          self.startChants = True
          # time update
          self.time = event.gameMinute
-         if len(self.times) > 0 and self.time > self.times[0]:
-            self.timeEvent.set()
+         self.timeEvent.set()
 
    def handleClockStoppedEvent (self, event):
       # time update
       with self.locks["event"]:
          self.startChants = False
          self.time = event.gameMinute
-         if len(self.times) > 0 and self.time > self.times[0]:
-            self.timeEvent.set()
+         self.timeEvent.set()
 
    def handleStatsFoundEvent (self, event):
       # time update
       self.time = event.gameMinute
+      self.done = False
       Thread(target=self.mainLoop,daemon=True).start()
 
    def handleStatsLostEvent (self, event):
@@ -81,10 +83,22 @@ class ChantPlayerManager (SENPAIListener):
 
    def handlePlayerSubEvent (self, event):
       # time update
-      self.time = event.gameMinute
+      with self.locks["event"]:
+         self.startChants = False
+         self.time = event.gameMinute
+         self.timeEvent.set()
+
+   def handleCardEvent (self, event):
+      with self.locks["event"]:
+         self.startChants = False
+         self.time = event.gameMinute
+         self.timeEvent.set()
 
    def mainLoop (self):
-      self.times = []
+      with self.locks["times"]:
+         if self.times is not None:
+            return
+         self.times = []
       self.timeEvent.clear()
       chantsPerTeam = settings.chants["perTeam"]
       # get approximate times for chants
@@ -92,30 +106,36 @@ class ChantPlayerManager (SENPAIListener):
          self.times.append(random.randint(settings.chants["minimum"], settings.chants["maximum"]))
       # sort them
       self.times.sort()
+      print("Chant target times:",self.times)
       # get team indicators
       teams = ["H" if x < chantsPerTeam else "A" for x in range(2*chantsPerTeam)]
       # shuffle them
       random.shuffle(teams)
       while len(self.times) > 0:
          # next chant happens at the first time
-         nextChant = self.times[0]
-         if self.time < nextChant:
-            wait = (nextChant-self.time)*settings.gameMinute
+         nextTime = self.times.pop(0)
+         oldTime = self.time
+         while self.time < nextTime:
+            wait = (nextTime-self.time)*settings.gameMinute
+            print("Waiting for {} seconds to approximate chant play (target {}, recorded time {})".format(wait, nextTime, self.time))
+            self.timeEvent.clear() # start wait fresh
             self.timeEvent.wait(wait) # don't tell me
+            # if time hasn't changed since waiting, continue
+            if self.time == oldTime:
+               break
          self.timeEvent.clear()
          # if we've lost stats, don't bother
          if self.done:
             break
-         # we must be at least this far if we've been using approximated time
-         if self.time < nextChant:
-            self.time = nextChant
-         self.times.pop(0)
+         # set time based on approximation
+         if self.time < nextTime and self.time == oldTime:
+            self.time = nextTime
          team = teams.pop(0)
          if team == "H":
             self.playHome()
          else:
             self.playAway()
-         # someone's chant didn't play
+      self.times = None
 
    def adjustVolume (self, value):
       self.targetVolume = value
@@ -171,9 +191,12 @@ class ChantPlayerManager (SENPAIListener):
 class ChantManager:
    def __init__ (self):
       self.manager = ChantPlayerManager();
+      self.registered = False
 
    def start (self, SENPAI):
-      SENPAI.addListener(self.manager)
+      if not self.registered:
+         SENPAI.addListener(self.manager)
+         self.registered = True
 
    def setHome (self, filename=None, parsed=None):
       if parsed is not None:

@@ -477,7 +477,7 @@ class EndInstruction (Instruction):
    def prep (self, player):
       player.instructionsEnd.append(self)
       if self.command != "loop":
-         player.song.get_media().add_options("input-repeat=0")
+         player.repeat = False
 
    def run (self, player):
       if self.command == "stop":
@@ -490,6 +490,28 @@ class EndInstruction (Instruction):
 
    def tokens(self):
       return [self.command]
+
+class EventInstruction (Instruction):
+   desc = """Sets event flags for SENPAI integration."""
+   types = ["red", "yellow", "owngoal", "sub"]
+
+   def __init__ (self, tokens, **kwargs):
+      if tokens[0] not in EventInstruction.types:
+         raise ValueError("Unrecognised event type (allowed values: {}).".format(", ".join(EventInstruction.types)))
+      self.etype = tokens[0]
+
+   def prep (self, player):
+      player.event = self.etype
+      player.repeat = False
+
+   def run (self, player):
+      pass
+
+   def type (self):
+      return "event"
+
+   def tokens(self):
+      return [self.etype]
 
 conditions = {
    "goals" : GoalCondition,
@@ -509,7 +531,8 @@ conditions = {
    # instruction
    "start" : StartInstruction,
    "pause" : PauseInstruction,
-   "end" : EndInstruction
+   "end" : EndInstruction,
+   "event" : EventInstruction
 }
 
 def processTokens (tokenStr):
@@ -553,6 +576,7 @@ class ConditionList:
       self.instructions = []
       self.disabled = False
       self.startTime = 0
+      self.event = None
       self.endType = "loop"
       self.pauseType = "continue"
       for tokenStr in data:
@@ -628,14 +652,12 @@ class ConditionList:
             return False
       return True
 
-def loadsong(filename, norepeat = False):
+def loadsong(filename):
    print("Attempting to load "+filename)
    filename = abspath(filename)
    if not ( isfile(filename) ):  
       raise Exception(filename+" not found.")
    source = vlc.MediaPlayer("file:///"+filename)
-   if not norepeat:
-      source.get_media().add_options("input-repeat=-1")
    return source
 
 class ConditionPlayer (ConditionList):
@@ -653,7 +675,13 @@ class ConditionPlayer (ConditionList):
       self.instructionsPause = []
       self.instructionsEnd = []
       self.maxVolume = 100
+      # repetition settings; may be changed by instructions
+      norepeat = set(["victory","chant"])
+      self.repeat = (pname not in norepeat)
       self.instruct()
+      # hard override for events to stop them repeating
+      if self.repeat and self.event is None:
+         self.song.get_media().add_options("input-repeat=-1")
    
    def instruct (self):
       for instruction in self.instructions:
@@ -661,7 +689,7 @@ class ConditionPlayer (ConditionList):
          instruction.prep(self)
 
    def reloadSong (self):
-      self.song = loadsong(self.songname, self.pname == "victory" or self.pname == "chant")
+      self.song = loadsong(self.songname)
       self.instruct()
 
    def play (self):
@@ -671,7 +699,6 @@ class ConditionPlayer (ConditionList):
          self.fade = None
          thread.join()
       self.song.play()
-      print("volume:",self.maxVolume)
       self.song.audio_set_volume(self.maxVolume)
       if self.firstPlay:
          for instruction in self.instructionsStart:
@@ -713,7 +740,8 @@ class ConditionPlayer (ConditionList):
       while i > 0:
          if self.fade == None:
             break
-         self.song.audio_set_volume(int(self.maxVolume * i/100))
+         volume = int(self.maxVolume * i/100)
+         self.song.audio_set_volume(volume)
          sleep(settings.fade["time"]/100)
          i -= 1
       for instruction in self.instructionsPause:

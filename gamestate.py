@@ -130,18 +130,13 @@ class GameState:
             return self.home_scorers
 
    def player_goals (self, pname, home):
-      if home:
-         with self.mutex["home"]:
-            if pname in self.home_scorers:
-               return self.home_scorers["pname"]
-            else:
-               return 0
-      else:
-         with self.mutex["away"]:
-            if pname in self.home_scorers:
-               return self.home_scorers["pname"]
-            else:
-               return 0
+      mutex = self.mutex["home" if home else "away"]
+      with mutex:
+         scorers = self.home_scorers if home else self.away_scorers
+         if pname in scorers:
+            return scorers[pname]
+         else:
+            return 0
 
    def clear (self):
       with self.mutex["home"]:

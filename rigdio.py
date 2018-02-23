@@ -15,6 +15,7 @@ from version import rigdio_version as version
 from senPy import ThreadSENPAI, SENPAINotFound, SENPAIConnectionFailed, SENPAIPipeClosed
 from rigdj_util import setMaxWidth
 from chants import ChantManager
+from event import EventController
 
 from logger import startLog
 if __name__ == '__main__':
@@ -71,12 +72,14 @@ class Rigdio (Frame):
       chantVolume = Scale(senpaiControls, from_=0, to=100, orient=HORIZONTAL, command=self.chants.adjustVolume, showvalue=0)
       chantVolume.set(100)
       chantVolume.pack()
-      manualChants = Frame(senpaiControls)
-      Label(manualChants, text="Manual Chants").grid(row=0,column=0,columnspan=2)
-      Button(manualChants, text="Home", command=self.chants.playHome, bg=settings.colours["home"]).grid(row=1,column=0)
-      Button(manualChants, text="Away", command=self.chants.playAway, bg=settings.colours["away"]).grid(row=1,column=1)
-      manualChants.pack()
+      #manualChants = Frame(senpaiControls)
+      #Label(manualChants, text="Manual Chants").grid(row=0,column=0,columnspan=2)
+      #Button(manualChants, text="Home", command=self.chants.playHome, bg=settings.colours["home"]).grid(row=1,column=0)
+      #Button(manualChants, text="Away", command=self.chants.playAway, bg=settings.colours["away"]).grid(row=1,column=1)
+      #manualChants.pack()
       senpaiControls.grid(row=2, column=1)
+      # events
+      self.events = EventController()
       # undo (temporary)
       Button(self, text="Undo Last Goal", command=self.game.undoLast).grid(row=3, column=1)
       # SENPAI integration
@@ -105,9 +108,9 @@ class Rigdio (Frame):
       elif isfile(f):
          print("Loading music instructions from {}.".format(f))
          try:
-            tmusic, tname = parse(f,home=home)
+            tmusic, tname, events = parse(f,home=home)
          except AttributeError as e:
-            messagebox.showerror("AttributeError on file load.","Did you download rigdio.exe instead of rigdio.7z?")
+            messagebox.showerror("AttributeError on file load.","Did you download rigdio.exe instead of rigdio.7z? Make sure that the libVLC DLLs and plugins directory are present.")
             raise e
          # this will only occur for non-rigdj .4ccm files (rigdj adds a second load of the anthems automatically if no victory anthem is provided)
          if "victory" not in tmusic:
@@ -124,7 +127,10 @@ class Rigdio (Frame):
                self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
             self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
             if self.chants is not None:
-               self.chants.setHome(parsed=tmusic["chant"])
+               if "chant" in tmusic:
+                  self.chants.setHome(parsed=tmusic["chant"])
+            if self.events is not None:
+               self.events.setHome(parsed=events)
          else:
             self.game.away_name = tname
             if self.away is not None:
@@ -135,7 +141,12 @@ class Rigdio (Frame):
                self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
             self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
             if self.chants is not None:
-               self.chants.setAway(parsed=tmusic["chant"])
+               if "chant" in tmusic:
+                  self.chants.setAway(parsed=tmusic["chant"])
+                  print("Prepared chants for team /{}/.".format(tname))
+            if self.events is not None:
+               self.events.setAway(parsed=events)
+               print("Prepared events for team /{}/.".format(tname))
          self.scoreWidget.updateLabels()
          self.game.clear()
          self.scoreWidget.updateScore()
@@ -145,6 +156,7 @@ class Rigdio (Frame):
    def activateSENPAI (self):
       self.SENPAI = ThreadSENPAI()
       self.chants.start(self.SENPAI)
+      self.events.start(self.SENPAI)
       try:
          self.SENPAI.start()
          print("SENPAI connection established.")

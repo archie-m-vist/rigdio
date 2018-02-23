@@ -31,3 +31,9 @@ gameMinute: 6.67
 level:
   # target in dbfs for riglevel
   target: -20.0
+event:
+  delay:
+    # delay between yellow card firing and audio clip playing in seconds; will be overridden by ClockStarted
+    yellow: 4
+    # delay between red card firing and audio clip playing in seconds; will be overridden by ClockStarted
+    red: 5

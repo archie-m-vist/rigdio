@@ -23,6 +23,12 @@ defaults = dict(
    gameMinute=6.67,
    level=dict(
       target = -20.0
+   ),
+   event=dict(
+      delay=dict(
+         yellow=4,
+         red=5
+      )
    )
 )
 
@@ -34,33 +40,57 @@ def genCfg ():
       return
    yaml.dump(defaults, file, default_flow_style=False)
 
+def recursiveDictCheck (d, defaultD, location):
+   for key in defaultD:
+      if key not in d:
+         print("Key {} not found in {}. Default value will be used.".format(key, location))
+         d[key] = defaultD[key]
+         continue
+      elif isinstance(defaultD[key],dict):
+         if not isinstance(d,dict):
+            print("Key {} at {} is not a dict. Default values will be used.".format(key, location))
+            d[key] = defaultD[key]
+            continue
+         else:
+            recursiveDictCheck(d[key],defaultD[key],location+":"+str(key))
+
 class ConfigValues:
    def __init__ (self):
       startLog("rigdio.log")
       self.loadCfg()   
 
    def checkCfg (self):
-      for key in defaults:
-         if key not in self.cfg:
-            self.cfg[key] = defaults[key]
-      try: 
-         self.cfg['fade']['time'] = float(self.cfg['fade']['time'])
-      except:
-         print("rigdio.yml error: fade time must be number. using default value.")
-         self.cfg['fade']['time'] = defaults['fade']['time']
-      try:
-         self.cfg['gameMinute'] = float(self.cfg['gameMinute'])
-      except:
-         print("rigdio.yml error: gameMinute must be number. using default value.")
-         self.cfg['fade']['time'] = defaults['fade']['time']
+      recursiveDictCheck(self.cfg, defaults, "rigdio.yml")
+      mustBeNumber = ['fade:time','chants:perTeam','chants:goalDelay','chants:minimum','chants:maximum','chants:delay','gameMinute','level:target','event:delay:yellow','event:delay:red']
+      for item in mustBeNumber:
+         items = item.split(":")
+         entry = self.cfg
+         default = defaults
+         oldEntry = None
+         for item in items:
+            oldEntry = entry
+            entry = entry[item]
+            default = default[item]
+         try:
+            float(entry)
+         except ValueError:
+            print("rigdio.yml error: {} must be number; using default value {}.".format(item, default))
+            oldEntry[items[-1]] = default
 
    def loadCfg (self):
       try:
          with open("rigdio.yml") as cfgfile:
             self.cfg = yaml.load(cfgfile)
-            self.checkCfg()
       except Exception as e: # error loading config file, use defaults
-         print("Error loading config file: {}".format(str(e)))
+         print("Error loading config file:",e)
+         print("Default values will be used.")
+         self.cfg = defaults
+         return
+      try:
+         self.checkCfg()
+      except Exception as e:
+         print("Error checking config file:",e)
+         print("This is probably a bug, rather than a rigdio.yml problem, but it shouldn't be fatal.")
          print("Default values will be used.")
          self.cfg = defaults
 

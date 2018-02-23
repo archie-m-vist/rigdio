@@ -5,18 +5,21 @@ from os.path import basename, splitext
 from condition import ConditionList, ConditionPlayer, loadsong
 
 # reserved names
-reserved = set(['anthem', 'victory', 'goal', 'name', "chant"])
+reserved = set(['anthem', 'victory', 'goal', 'name', 'chant', ';event'])
 
 def parse (filename, load = True, home = True):
    """Parses a music export file and loads it into memory."""
    # get location of folder
    folder = '/'.join(filename.split('/')[0:-1])+'/'
-   output = {}
+   # regular player clist collections
+   players = {}
+   # event
+   events = {}
    filenames = {
       "goal" : "Goalhorn",
       "anthem" : "Anthem",
       "victory" : "Victory Anthem",
-      "chant" : "chant"
+      "chant" : "Chant"
    }
    
    # open filename
@@ -45,8 +48,6 @@ def parse (filename, load = True, home = True):
       # trim whitespace from ends of strings
       data = [x.strip() for x in data]
       player = data[0] # name of player
-      if player not in output:
-         output[player] = []
       if len(data) == 1:
          default = "{} - {}.mp3" if player in reserved else "{} - {} Goalhorn.mp3"
          fancyname = filenames[player] if player in reserved else player
@@ -56,7 +57,6 @@ def parse (filename, load = True, home = True):
       filename = folder+data[1] # location of song, relative to location of export file
       # if we're loading the songs, create ConditionPlayer objects
       if load:
-         norepeat = set(["victory","chant"])
          songtype = ("goalhorn" if (player != "anthem" and player != "victory") else player)
          clist = ConditionPlayer(
             pname=data[0],
@@ -64,7 +64,7 @@ def parse (filename, load = True, home = True):
             data=data[2:],
             songname=filename,
             home=home,
-            song=loadsong(filename,norepeat=player in norepeat),
+            song=loadsong(filename),
             type=songtype)
       # otherwise, ConditionList uses less memory and doesn't make libVLC calls
       else:
@@ -74,16 +74,24 @@ def parse (filename, load = True, home = True):
             data=data[2:],
             songname=filename,
             home=home)
-      # add this condition list to the output
-      output[player].append(clist)
+      # add this condition list to the output list
+      if clist.event is None:
+         if player not in players:
+            players[player] = []
+         players[player].append(clist)
+      # add to event list
+      else:
+         if clist.event not in events:
+            events[clist.event] = []
+         events[clist.event].append(clist)
    
    # copy default goalhorn onto the end of all player goalhorns
    if load:
-      for name, conditions in output.items():
+      for name, conditions in players.items():
          if ( name not in reserved ):
-            output[name].extend(output['goal'])
+            players[name].extend(players['goal'])
    print("Loaded songs for team /{}/".format(tname))
-   return output, tname
+   return players, tname, events
 
 def main ():
    file = parse("./music/4cc/m/m.4ccm")
