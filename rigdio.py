@@ -127,10 +127,17 @@ class Rigdio (Frame):
                self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
             self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
             if self.chants is not None:
-               if "chant" in tmusic:
+               if "chant" in tmusic and tmusic["chant"] is not None:
+                  print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
+                  for clist in tmusic["chant"]:
+                     print("\t{}".format(clist.songname))
                   self.chants.setHome(parsed=tmusic["chant"])
+               else:
+                  print("No chants for team /{}/.".format(tname))
+                  self.chants.setHome(parsed=None)
             if self.events is not None:
                self.events.setHome(parsed=events)
+               print("Prepared events for team /{}/.".format(tname))
          else:
             self.game.away_name = tname
             if self.away is not None:
@@ -141,9 +148,14 @@ class Rigdio (Frame):
                self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
             self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
             if self.chants is not None:
-               if "chant" in tmusic:
+               if "chant" in tmusic and tmusic["chant"] is not None:
+                  print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
+                  for clist in tmusic["chant"]:
+                     print("\t{}".format(clist.songname))
                   self.chants.setAway(parsed=tmusic["chant"])
-                  print("Prepared chants for team /{}/.".format(tname))
+               else:
+                  print("No chants for team /{}/.".format(tname))
+                  self.chants.setAway(parsed=None)
             if self.events is not None:
                self.events.setAway(parsed=events)
                print("Prepared events for team /{}/.".format(tname))

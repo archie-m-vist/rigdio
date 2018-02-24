@@ -54,7 +54,6 @@ class ChantPlayerManager (SENPAIListener):
          self.timeEvent.set()
 
    def handleClockStartedEvent (self, event):
-      print("Started!",event.gameMinute)
       with self.locks["event"]:
          if self.goalDelay == True:
             wait(settings.chants["goalDelay"])
@@ -126,6 +125,7 @@ class ChantPlayerManager (SENPAIListener):
          self.timeEvent.clear()
          # if we've lost stats, don't bother
          if self.done:
+            print("WARNING: Game ended while mainLoop still running.")
             break
          # set time based on approximation
          if self.time < nextTime and self.time == oldTime:
@@ -135,6 +135,9 @@ class ChantPlayerManager (SENPAIListener):
             self.playHome()
          else:
             self.playAway()
+      # clear home and away chants
+      self.homeChants = None
+      self.awayChants = None
       self.times = None
 
    def adjustVolume (self, value):
@@ -201,10 +204,16 @@ class ChantManager:
    def setHome (self, filename=None, parsed=None):
       if parsed is not None:
          self.manager.homeChants = parsed
+      else:
+         print("No chants received for home team.")
+         self.manager.homeChants = None
 
    def setAway (self, filename=None, parsed=None):
       if parsed is not None:
          self.manager.awayChants = parsed
+      else:
+         print("No chants received for away team.")
+         self.manager.awayChants = None
 
    def playHome (self):
       Thread(target=self.manager.playHome,daemon=True).start()
