@@ -523,11 +523,11 @@ conditions = {
    "home" : HomeCondition,
    "once" : OnceCondition,
    "mostgoals" : MostGoalsCondition,
+   "every" : EveryCondition,
    # prompt
    "time" : TimeCondition,
    # meta
    "not" : NotCondition,
-   "every" : EveryCondition,
    # instruction
    "start" : StartInstruction,
    "pause" : PauseInstruction,

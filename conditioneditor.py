@@ -85,12 +85,14 @@ class ConditionEditor (Frame):
          "once" : lambda master,cond: EmptyConditionEditor(master,cond,OnceCondition),
          "every" : EveryConditionEditor,
          "mostgoals" : MostGoalsConditionEditor,
+         "every" : EveryConditionEditor,
          # meta conditions
          "not" : NotConditionEditor,
          # instructions
          "start" : StartInstructionEditor,
          "pause" : PauseInstructionEditor,
-         "end" : EndInstructionEditor
+         "end" : EndInstructionEditor,
+         "event" : EventInstructionEditor
       }
       return editors[ctype]
 
@@ -398,9 +400,29 @@ class EndInstructionEditor (ConditionEditor):
 
    def build (self, tokens):
       self.fields.append(StringVar())
-      self.fields[0].set(tokens[0])
+      if tokens[0] in EndInstruction.types:
+         self.fields[0].set(tokens[0])
+      else:
+         self.fields[0].set("loop")
       selector = OptionMenu(self, self.fields[0], *EndInstruction.types)
       setMaxWidth(EndInstruction.types, selector)
+      selector.pack()
+
+class EventInstructionEditor (ConditionEditor):
+   def __init__ (self, master, cond):
+      super().__init__(master, cond, EventInstruction)
+
+   def default (self):
+      return ["sub"]
+
+   def build (self, tokens):
+      self.fields.append(StringVar())
+      if tokens[0] in EventInstruction.types:
+         self.fields[0].set(tokens[0])
+      else:
+         self.fields[0].set("sub")
+      selector = OptionMenu(self, self.fields[0], *EventInstruction.types)
+      setMaxWidth(EventInstruction.types, selector)
       selector.pack()
 
 class ConditionDialog (Dialog):
