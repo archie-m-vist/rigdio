@@ -24,6 +24,7 @@ defaults = dict(
    level=dict(
       target = -20.0
    ),
+   match="Group",
    event=dict(
       delay=dict(
          yellow=4,

@@ -28,6 +28,10 @@ fade:
 # number of seconds in a game minute
 # 5 minute half => 1 minute per 9 game minutes => 6.67 seconds per game minute
 gameMinute: 6.67
+# default match type to load
+# can be any of the MatchCondition types: "Group", "RO16", "Quarterfinal", "Semifinal", "Final", "Third-Place", "Boss", "Consolation"
+# default 'Group'
+match: 'RO16'
 level:
   # target in dbfs for riglevel
   target: -20.0

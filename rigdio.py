@@ -90,7 +90,7 @@ class Rigdio (Frame):
       gametypes = MatchCondition.types
       Label(gameTypeMenu, text="Match Type").pack()
       gametype = StringVar()
-      gametype.set("Group")
+      gametype.set(settings.match)
       self.game.gametype = gametype.get().lower()
       menu = OptionMenu(gameTypeMenu, gametype, *gametypes, command=self.changeGameType)
       setMaxWidth(gametypes,menu)
