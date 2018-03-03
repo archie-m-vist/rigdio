@@ -13,7 +13,12 @@ defaults = dict(
    ),
    chants=dict(
       repeats=False,
-      perTeam=2,
+      perTeam=dict(
+         firstHalf = 1,
+         secondHalf = 1,
+         free = 1,
+         extra = 1
+      ),
       goalFade=True,
       goalDelay=20,
       minimum=5,

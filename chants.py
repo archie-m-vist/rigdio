@@ -101,8 +101,14 @@ class ChantPlayerManager (SENPAIListener):
       self.timeEvent.clear()
       chantsPerTeam = settings.chants["perTeam"]
       # get approximate times for chants
-      for i in range(2*chantsPerTeam):
-         self.times.append(random.randint(settings.chants["minimum"], settings.chants["maximum"]))
+      for i in range(2*chantsPerTeam["firstHalf"]):
+         self.times.append(random.randint(settings.chants["minimum"], 45))
+      for i in range(2*chantsPerTeam["secondHalf"]):
+         self.times.append(random.randint(45, settings.chants["maximum"]))
+      for i in range(2*chantsPerTeam["free"]):
+            self.times.append(random.randint(settings.chants["minimum"], settings.chants["maximum"]))
+      for i in range(2*chantsPerTeam["extra"]):
+            self.times.append(random.randint(90, 120))
       # sort them
       self.times.sort()
       print("Chant target times:",self.times)

@@ -10,7 +10,11 @@ chants:
   # earliest point in a game where a chant will be scheduled, in game minutes
   minimum: 5
   # number of chants per team per game
-  perTeam: 2
+  perTeam:
+    firstHalf: 1
+    secondHalf: 1
+    free: 1
+    extra: 1
   # whether to replay the same chant. default false; true will make it possible for a chant to play multiple times in a match
   repeats: false
 colours:
