@@ -1,6 +1,5 @@
 from threading import Lock, Thread, Event
 from config import settings
-from condition import ConditionPlayer
 from senPy import SENPAIListener
 from time import sleep
 import random
@@ -100,20 +99,28 @@ class ChantPlayerManager (SENPAIListener):
          self.times = []
       self.timeEvent.clear()
       chantsPerTeam = settings.chants["perTeam"]
+      teams = [];
       # get approximate times for chants
-      for i in range(2*chantsPerTeam["firstHalf"]):
-         self.times.append(random.randint(settings.chants["minimum"], 45))
-      for i in range(2*chantsPerTeam["secondHalf"]):
-         self.times.append(random.randint(45, settings.chants["maximum"]))
-      for i in range(2*chantsPerTeam["free"]):
-            self.times.append(random.randint(settings.chants["minimum"], settings.chants["maximum"]))
-      for i in range(2*chantsPerTeam["extra"]):
-            self.times.append(random.randint(90, 120))
+      segments = [
+         ["firstHalf", settings.chants["minimum"], 45],
+         ["secondHalf", 45, settings.chants["maximum"]],
+         ["free", settings.chants["minimum"], settings.chants["maximum"]],
+         ["extra", 90,120]
+      ]
+      times = []
+      for segment in segments:
+         count = chantsPerTeam[segment[0]]
+         teamsThisTime = []
+         for x in range(2*count):
+            self.times.append(random.randint(segment[1],segment[2]))
+            teamsThisTime.append("H" if x < count else "A")
+         random.shuffle(teamsThisTime)
+         teams.extend(teamsThisTime)
       # sort them
       self.times.sort()
       print("Chant target times:",self.times)
       # get team indicators
-      teams = ["H" if x < chantsPerTeam else "A" for x in range(2*chantsPerTeam)]
+      teams = ["H" if x < len(self.times)/2 else "A" for x in range(len(self.times))]
       # shuffle them
       random.shuffle(teams)
       while len(self.times) > 0:
