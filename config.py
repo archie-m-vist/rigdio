@@ -21,8 +21,13 @@ defaults = dict(
       ),
       goalFade=True,
       goalDelay=20,
-      minimum=5,
-      maximum=85,
+      # allowed chant times by game half
+      times = dict(
+         firstHalf = [5,40],
+         secondHalf = [50,85],
+         firstExtra = [92,103],
+         secondExtra = [107,118]
+      ),
       delay=2
    ),
    gameMinute=6.67,
@@ -67,7 +72,14 @@ class ConfigValues:
 
    def checkCfg (self):
       recursiveDictCheck(self.cfg, defaults, "rigdio.yml")
-      mustBeNumber = ['fade:time','chants:perTeam','chants:goalDelay','chants:minimum','chants:maximum','chants:delay','gameMinute','level:target','event:delay:yellow','event:delay:red']
+      mustBeNumber = [
+                        'fade:time',
+                        'chants:perTeam:firstHalf','chants:perTeam:secondHalf','chants:perTeam:free','chants:perTeam:extra',
+                        'chants:delay',
+                        'gameMinute',
+                        'level:target',
+                        'event:delay:yellow','event:delay:red'
+                     ]
       for item in mustBeNumber:
          items = item.split(":")
          entry = self.cfg

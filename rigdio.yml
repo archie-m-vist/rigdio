@@ -1,47 +1,58 @@
 chants:
-  # how long a queued but paused chant will wait before playing, in seconds
+  # delay between "simultaneous" chants in real-world seconds. default 2
   delay: 2
-  # whether or not to fade out chants when a goal occurs while one is playing. default true; false will stop chants immediately.
+  # set to true to fade out chants when a goal is detected. default true
   goalFade: true
-  # how long to wait after a ClockStarted after a goal before playing queued chants, in seconds
-  goalDelay: 20
-  # latest point in a game where a chant will be scheduled, in game minutes
-  maximum: 85
-  # earliest point in a game where a chant will be scheduled, in game minutes
-  minimum: 5
-  # number of chants per team per game
+  # chants to play per team in each game division
   perTeam:
+    # chants to play in first half. default 1
     firstHalf: 1
+    # chants to play in second half. default 1
     secondHalf: 1
+    # chants to play in a random half. default 1
     free: 1
+    # chants to play in extra time. default 1
     extra: 1
-  # whether to replay the same chant. default false; true will make it possible for a chant to play multiple times in a match
+  # set to true to allow chants to randomly repeat. default false
   repeats: false
+  # time periods in each game division during which chants can play
+  # first line is beginning, second line is end
+  # chants cannot play in the first minute of each half
+  times:
+    firstExtra: # default 92-103; 91-105 for whole half
+    - 92
+    - 103
+    firstHalf: # default 5-40; 1-45 for whole half
+    - 5
+    - 40
+    secondExtra: # default 107-118; 106-120 for whole half
+    - 107
+    - 118
+    secondHalf: # default 50-85; 46-90 for whole half
+    - 50
+    - 85
+# button colours for home and away teams
 colours:
-  # colour used for away-team UI elements
   away: '#ffe0dd'
-  # colour used for home-team UI elements
   home: '#e0e0fc'
-fade:
-  # toggles fading out anthems when they pause. default false
-  anthem: false
-  # toggles fading out goalhorns when they pause. default true
-  goalhorn: true
-  # how long to fade out songs and (if enabled) chants, in seconds.
-  time: 2
-# number of seconds in a game minute
-# 5 minute half => 1 minute per 9 game minutes => 6.67 seconds per game minute
-gameMinute: 6.67
-# default match type to load
-# can be any of the MatchCondition types: "Group", "RO16", "Quarterfinal", "Semifinal", "Final", "Third-Place", "Boss", "Consolation"
-# default 'Group'
-match: 'RO16'
-level:
-  # target in dbfs for riglevel
-  target: -20.0
 event:
+  # delay after registering SENPAI event before playing clip
   delay:
-    # delay between yellow card firing and audio clip playing in seconds; will be overridden by ClockStarted
-    yellow: 4
-    # delay between red card firing and audio clip playing in seconds; will be overridden by ClockStarted
+    # red card delay. default 5
     red: 5
+    # yellow card delay. default 4
+    yellow: 4
+# controls fading
+fade:
+  # if true, anthems will fade out. default false.
+  anthem: false
+  # if true, goalhorns will fade out. default true.
+  goalhorn: true
+  # number of seconds to fade out goalhorns
+  time: 2
+# number of seconds in a game minute. currently unused, kept for compatibility. default 6.67
+gameMinute: 6.67
+level:
+  target: -20.0
+# default match level.
+match: Group
