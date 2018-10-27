@@ -2,7 +2,7 @@ from tkinter import *
 import tkinter.messagebox as messagebox
 from rigparse import reserved
 from rigdio_except import UnloadSong, SongNotFound
-from condition import PlayerManager
+from legacy import PlayerManager
 from config import settings
 
 class PlayerButtons:
@@ -80,7 +80,7 @@ class PlayerButtons:
       self.resetButton.grid(row=row,column=2,sticky=N+S, padx=2, pady=(5,0))
       self.volume.grid(row=row+1,column=0,columnspan=3,sticky=E+W, pady=(0,5))
 
-class TeamMenu (Frame):
+class TeamMenuLegacy (Frame):
    def __init__ (self, master, tname, players, home, game):
       Frame.__init__(self, master)
       # store information from constructor

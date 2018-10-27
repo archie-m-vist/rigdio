@@ -1,5 +1,6 @@
 import sys
-from os.path import isfile, join, abspath
+from os.path import isfile, join, abspath, splitext   
+import yaml
 
 from tkinter import *
 import tkinter.filedialog as filedialog
@@ -8,7 +9,7 @@ import tkinter.messagebox as messagebox
 from config import genCfg, settings
 
 from condition import MatchCondition
-from rigparse import parse
+from rigparse import parse as parseLegacy
 from gamestate import GameState
 from songgui import *
 from version import rigdio_version as version
@@ -72,11 +73,12 @@ class Rigdio (Frame):
       chantVolume = Scale(senpaiControls, from_=0, to=100, orient=HORIZONTAL, command=self.chants.adjustVolume, showvalue=0)
       chantVolume.set(100)
       chantVolume.pack()
-      #manualChants = Frame(senpaiControls)
-      #Label(manualChants, text="Manual Chants").grid(row=0,column=0,columnspan=2)
-      #Button(manualChants, text="Home", command=self.chants.playHome, bg=settings.colours["home"]).grid(row=1,column=0)
-      #Button(manualChants, text="Away", command=self.chants.playAway, bg=settings.colours["away"]).grid(row=1,column=1)
-      #manualChants.pack()
+      # manual chant controls
+      manualChants = Frame(senpaiControls)
+      Label(manualChants, text="Manual Chants").grid(row=0,column=0,columnspan=2)
+      Button(manualChants, text="Home", command=self.chants.playHome, bg=settings.colours["home"]).grid(row=1,column=0)
+      Button(manualChants, text="Away", command=self.chants.playAway, bg=settings.colours["away"]).grid(row=1,column=1)
+      manualChants.pack()
       senpaiControls.grid(row=2, column=1)
       # events
       self.events = EventController()
@@ -100,65 +102,78 @@ class Rigdio (Frame):
    def changeGameType (self, option):
       self.game.gametype = option.lower()
 
+   def legacyLoad (self, f, home):
+      print("Loading music instructions from {}.".format(f))
+      try:
+         tmusic, tname, events = parseLegacy(f,home=home)
+      except AttributeError as e:
+         messagebox.showerror("AttributeError on file load.","Did you download rigdio.exe instead of rigdio.7z? Make sure that the libVLC DLLs and plugins directory are present.")
+         raise e
+      # this will only occur for non-rigdj .4ccm files (rigdj adds a second load of the anthems automatically if no victory anthem is provided)
+      if "victory" not in tmusic:
+         messagebox.showwarning("Warning","No victory anthem information in {}; victory anthem will need to be played manually.".format(f))
+      if tname is None:
+         messagebox.showwarning("Warning","No team name found in {}. Opponent-specific music may not function properly.".format(f))
+      if home:
+         self.game.home_name = tname
+         if self.home is not None:
+            self.home.grid_forget()
+            self.home.clear()
+         self.home = TeamMenuLegacy(self, tname, tmusic, True, self.game)
+         if self.away is not None:
+            self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
+         self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
+         if self.chants is not None:
+            if "chant" in tmusic and tmusic["chant"] is not None:
+               print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
+               for clist in tmusic["chant"]:
+                  print("\t{}".format(clist.songname))
+               self.chants.setHome(parsed=tmusic["chant"])
+            else:
+               print("No chants for team /{}/.".format(tname))
+               self.chants.setHome(parsed=None)
+         if self.events is not None:
+            self.events.setHome(parsed=events)
+            print("Prepared events for team /{}/.".format(tname))
+      else:
+         self.game.away_name = tname
+         if self.away is not None:
+            self.away.grid_forget()
+            self.away.clear()
+         self.away = TeamMenuLegacy(self, tname, tmusic, False, self.game)
+         if self.home is not None:
+            self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
+         self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
+         if self.chants is not None:
+            if "chant" in tmusic and tmusic["chant"] is not None:
+               print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
+               for clist in tmusic["chant"]:
+                  print("\t{}".format(clist.songname))
+               self.chants.setAway(parsed=tmusic["chant"])
+            else:
+               print("No chants for team /{}/.".format(tname))
+               self.chants.setAway(parsed=None)
+         if self.events is not None:
+            self.events.setAway(parsed=events)
+            print("Prepared events for team /{}/.".format(tname))
+
+   def yamlLoad (self, f, home):
+      pass
+
    def loadFile (self, home = True):
       f = filedialog.askopenfilename(filetypes = (("Rigdio export files", "*.4ccm"),("All files","*.*")))
       if f == "":
          # do nothing if cancel was pressed
          return
       elif isfile(f):
-         print("Loading music instructions from {}.".format(f))
-         try:
-            tmusic, tname, events = parse(f,home=home)
-         except AttributeError as e:
-            messagebox.showerror("AttributeError on file load.","Did you download rigdio.exe instead of rigdio.7z? Make sure that the libVLC DLLs and plugins directory are present.")
-            raise e
-         # this will only occur for non-rigdj .4ccm files (rigdj adds a second load of the anthems automatically if no victory anthem is provided)
-         if "victory" not in tmusic:
-            messagebox.showwarning("Warning","No victory anthem information in {}; victory anthem will need to be played manually.".format(f))
-         if tname is None:
-            messagebox.showwarning("Warning","No team name found in {}. Opponent-specific music may not function properly.".format(f))
-         if home:
-            self.game.home_name = tname
-            if self.home is not None:
-               self.home.grid_forget()
-               self.home.clear()
-            self.home = TeamMenu(self, tname, tmusic, True, self.game)
-            if self.away is not None:
-               self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
-            self.home.grid(row = 1, column = 0, rowspan=2, sticky=N)
-            if self.chants is not None:
-               if "chant" in tmusic and tmusic["chant"] is not None:
-                  print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
-                  for clist in tmusic["chant"]:
-                     print("\t{}".format(clist.songname))
-                  self.chants.setHome(parsed=tmusic["chant"])
-               else:
-                  print("No chants for team /{}/.".format(tname))
-                  self.chants.setHome(parsed=None)
-            if self.events is not None:
-               self.events.setHome(parsed=events)
-               print("Prepared events for team /{}/.".format(tname))
+         extension = splitext(f)[1]
+         if extension == ".4ccm":
+            self.legacyLoad(f,home)
+         elif extension == ".yml":
+            self.yamlLoad(f,home)
          else:
-            self.game.away_name = tname
-            if self.away is not None:
-               self.away.grid_forget()
-               self.away.clear()
-            self.away = TeamMenu(self, tname, tmusic, False, self.game)
-            if self.home is not None:
-               self.home.anthemButtons.awayButtonHook = self.away.anthemButtons
-            self.away.grid(row = 1, column = 2, rowspan=2, sticky=N)
-            if self.chants is not None:
-               if "chant" in tmusic and tmusic["chant"] is not None:
-                  print("Got {} chants for team /{}/.".format(len(tmusic["chant"]), tname))
-                  for clist in tmusic["chant"]:
-                     print("\t{}".format(clist.songname))
-                  self.chants.setAway(parsed=tmusic["chant"])
-               else:
-                  print("No chants for team /{}/.".format(tname))
-                  self.chants.setAway(parsed=None)
-            if self.events is not None:
-               self.events.setAway(parsed=events)
-               print("Prepared events for team /{}/.".format(tname))
+            messagebox.showerror("Error","File type {} not supported.".format(extension))
+            return
          self.scoreWidget.updateLabels()
          self.game.clear()
          self.scoreWidget.updateScore()

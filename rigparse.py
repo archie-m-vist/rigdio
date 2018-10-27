@@ -2,7 +2,7 @@ import os
 import vlc
 
 from os.path import basename, splitext
-from condition import ConditionList, ConditionPlayer, loadsong
+from legacy import ConditionList, ConditionPlayer, loadsong
 
 # reserved names
 reserved = set(['anthem', 'victory', 'goal', 'name', 'chant', ';event'])
