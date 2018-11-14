@@ -1,4 +1,5 @@
 from condition import *
+from config import settings
 
 class ConditionList:
    def __init__(self, pname = "NOPLAYER", tname = "NOTEAM", data = [], songname = "New Song", home = True, runInstructions = True):
@@ -20,6 +21,8 @@ class ConditionList:
             self.instructions.append(condition)
          else:
             self.conditions.append(condition)
+      if pname == "chant":
+         self.instructions.append(EndInstruction(pname=self.pname, tname=self.tname, tokens=("stop",)))
       self.all = self.conditions + self.instructions
       if runInstructions:
          self.instruct()
@@ -133,9 +136,10 @@ class ConditionPlayer (ConditionList):
       self.instructionsEnd = []
       self.maxVolume = 100
       # repetition settings; may be changed by instructions
-      norepeat = set(["victory","chant"])
+      norepeat = set(["victory"])
       self.repeat = (pname not in norepeat)
       self.instruct()
+      self.song.set_rate(float(settings.speed))
       # hard override for events to stop them repeating
       if self.repeat and self.event is None:
          self.song.get_media().add_options("input-repeat=-1")
@@ -147,6 +151,7 @@ class ConditionPlayer (ConditionList):
 
    def reloadSong (self):
       self.song = loadsong(self.songname)
+      print("reloading {}".format(self.songname))
       self.instruct()
 
    def play (self):
@@ -161,8 +166,6 @@ class ConditionPlayer (ConditionList):
          for instruction in self.instructionsStart:
             instruction.run(self)
          self.firstPlay = False
-      if len(self.instructionsEnd) > 0:
-         self.endChecker = threading.Thread(target=self.checkEnd)
 
    def adjustVolume (self, value):
       self.maxVolume = int(value)
@@ -184,13 +187,6 @@ class ConditionPlayer (ConditionList):
    def onEnd (self, callback):
       events = self.song.event_manager()
       events.event_attach(vlc.EventType.MediaPlayerEndReached, callback)
-
-   def checkEnd (self):
-      while self.endChecker is not None:
-         if self.song.get_media().get_state() == vlc.State.Ended:
-            for instruction in self.instructionsEnd:
-               instruction.run(self)
-            self.endChecker = None
 
    def fadeOut (self):
       i = 100

@@ -56,3 +56,4 @@ level:
   target: -20.0
 # default match level.
 match: Group
+speed: 1.0
