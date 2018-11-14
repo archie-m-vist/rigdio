@@ -74,11 +74,17 @@ class EventController:
 
    def setHome (self, parsed):
       self.home.setClips(parsed)
-      print("Home team event clips ready.")
+      if len(self.home.clips.keys()) > 0:
+         print("Home team event clips ready.")
+      else:
+         print("Home team has no event clips.")
 
    def setAway (self, parsed):
       self.away.setClips(parsed)
-      print("Away team event clips ready.")
+      if len(self.away.clips.keys()) > 0:
+         print("Away team event clips ready.")
+      else:
+         print("Away team has no event clips.")
 
    def start (self, SENPAI):
       if not self.registered:
