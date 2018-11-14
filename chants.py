@@ -4,6 +4,10 @@ from senPy import SENPAIListener
 from time import sleep
 import random
 
+import os.path
+
+from tkinter import *
+
 class ChantPlayerManager (SENPAIListener):
    def __init__ (self, *args, homeFilename = None, awayFilename = None, homeParsed = None, awayParsed = None, **kwargs):
       # process home chants
@@ -32,7 +36,14 @@ class ChantPlayerManager (SENPAIListener):
       super().__init__(*args, **kwargs)
 
    def handlesEvent (self, eventType):
-      return eventType in set(["Clock Updated", "Goal"])
+      return eventType in set(["Teams Changed", "Clock Updated", "Goal"])
+
+   def handleTeamsChangedEvent (self, event):
+      gameString = "Preparing New Game: /{}/ vs /{}/".format(event.home,event.away)
+      delimiter = "=" * len(gameString)
+      print(delimiter)
+      print(gameString)
+      print(delimiter)
 
    def generateTimes (self, extra):
       self.times = []
@@ -78,14 +89,14 @@ class ChantPlayerManager (SENPAIListener):
 
    def handleClockUpdatedEvent (self, event):
       with self.lock:
-         if self.times is None:
+         if self.times is None and event.injuryMinute is None:
             # generate times for regulation or extra time, as appropriate
             self.generateTimes(event.gameMinute > 90)
          # check if a chant can play:
          ## times must be generated
          ## game minute must match the time
          ## no chants in stoppage time
-         if self.times is not None:
+         if self.times is not None and len(self.times) > 0:
             minute = int(event.gameMinute)
             # if for whatever reason a chant should've played but hasn't, pop en masse and add to queue
             while minute > self.times[0][0]:
@@ -184,10 +195,54 @@ class ChantPlayerManager (SENPAIListener):
                sleep(settings.chants["delay"])
                self.slept = True
 
-class ChantManager:
-   def __init__ (self):
+class ChantManager ():
+   def __init__ (self, parent):
+      """
+         Arguments:
+          - parent: Rigdio object creating this ChantManager.
+      """
       self.manager = ChantPlayerManager();
       self.registered = False
+      self.parent = parent
+
+      self.window = None
+      self.homeFrame = None
+      self.awayFrame = None
+
+   def makeWindow (self):
+      # can't open multiple windows
+      if self.window is not None:
+         print("Manual chant window already open, attempting to take focus.")
+         self.window.focus_force()
+         return
+      # create window object
+      self.window = Toplevel(self.parent)
+      # make sure that when the window is closed, we destroy the reference
+      self.window.protocol("WM_DELETE_WINDOW", self.destroyWindow)
+      # window title
+      self.window.title("Manual Chants")
+      # add home/away button frames
+      self.homeFrame = Frame(self.window)
+      self.awayFrame = Frame(self.window)
+      self.updateWindow(home=self.manager.homeChants is not None, away=self.manager.awayChants is not None)
+      self.homeFrame.grid(row=0,column=0)
+      self.awayFrame.grid(row=0,column=1)
+
+   def updateWindow (self, home=False, away=False):
+      if home:
+         for chant in self.manager.homeChants:
+            name = os.path.basename(chant.songname)
+            Button(self.homeFrame, text=name, command=chant.play, bg=settings.colours["home"]).pack()
+      if away:
+         for chant in self.manager.awayChants:
+            name = os.path.basename(chant.songname)
+            Button(self.awayFrame, text=name, command=chant.play, bg=settings.colours["away"]).pack()
+
+   def destroyWindow (self):
+      self.window.destroy()
+      self.window = None
+      self.homeFrame = None
+      self.awayFrame = None
 
    def start (self, SENPAI):
       if not self.registered:
@@ -197,6 +252,8 @@ class ChantManager:
    def setHome (self, filename=None, parsed=None):
       if parsed is not None:
          self.manager.homeChants = parsed
+         if self.homeFrame is not None:
+            self.updateWindow(home=True)
       else:
          print("No chants received for home team.")
          self.manager.homeChants = None
@@ -204,16 +261,23 @@ class ChantManager:
    def setAway (self, filename=None, parsed=None):
       if parsed is not None:
          self.manager.awayChants = parsed
+         if self.awayFrame is not None:
+            self.updateWindow(away=True)
       else:
          print("No chants received for away team.")
          self.manager.awayChants = None
 
    def playHome (self):
-      Thread(target=self.manager.playHome,daemon=True).start()
+      """
+         Plays a random manual home chant.
+      """
+      Thread(target=self.manager.playHome,args=(True,),daemon=True).start()
 
    def playAway (self):
-      Thread(target=self.manager.playAway,daemon=True).start()
+      """
+         Plays a random manual away chant.
+      """
+      Thread(target=self.manager.playAway,args=(True,),daemon=True).start()
 
    def adjustVolume (self, value):
       self.manager.adjustVolume(value)
-
